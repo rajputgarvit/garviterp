@@ -1,4 +1,7 @@
 <?php
+// Determine Protocol
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+
 // Determine Environment
 if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1') {
     // Database Configuration - Local
@@ -10,7 +13,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.
     // Application Configuration - Local
     define('APP_NAME', 'Hawk ERP');
     define('APP_VERSION', '1.0.0');
-    define('BASE_URL', 'http://localhost/garvitrajput/');
+    define('BASE_URL', $protocol . 'localhost/garvitrajput/');
     define('MODULES_URL', BASE_URL . 'modules');
 } else {
     // Database Configuration - Prod
@@ -22,7 +25,7 @@ if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.
     // Application Configuration - Prod
     define('APP_NAME', 'Hawk ERP');
     define('APP_VERSION', '1.0.0');
-    define('BASE_URL', 'http://garvitrajput.co.in/');
+    define('BASE_URL', $protocol . 'garvitrajput.co.in/');
     define('MODULES_URL', BASE_URL . 'modules');
 }
 
