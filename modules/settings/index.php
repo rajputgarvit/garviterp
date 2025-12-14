@@ -379,7 +379,7 @@ $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY d
                             <div class="setting-item">
                                 <h4><i class="fas fa-user-shield"></i> Roles</h4>
                                 <p><?php echo count($roles); ?> roles configured</p>
-                                <button class="btn btn-primary btn-sm" disabled>
+                                <button class="btn btn-primary btn-sm" onclick="window.location.href='roles.php'">
                                     <i class="fas fa-cog"></i> Manage Roles
                                 </button>
                             </div>
