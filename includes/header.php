@@ -20,7 +20,7 @@ if (!$isSpaRequest):
     <div class="header-right">
         <?php if ($auth->hasRole('Super Admin')): ?>
             <a href="<?php echo MODULES_URL; ?>/admin/dashboard.php" class="btn btn-primary btn-sm" style="margin-right: 15px;">
-                <i class="fas fa-user-shield"></i> Admin Panel
+                <i class="fas fa-user-shield"></i> Go to Admin Panel
             </a>
         <?php endif; ?>
         <div class="user-menu">
