@@ -1,0 +1,18 @@
+---
+deployment:
+  tasks:
+    # Deployment Configuration for Acculynce
+    # Defaulting to Production (acculynce.com)
+    # The default cPanel user home is typically /home/username
+    # Based on DB User 'eroiwmza_acculynce', assuming user is 'eroiwmza'
+    
+    # PRODUCTION Deployment Path:
+    # - export DEPLOYPATH=/home/eroiwmza/public_html/
+    
+    # FOR DEV (dev.acculynce.com):
+    # Uncomment the line below and comment out the Production line above if this file is for the Dev branch/repo
+    - export DEPLOYPATH=/home/eroiwmza/public_html/test
+    
+    # Copy files to the deployment directory
+    # -a preserves structure and attributes
+    - /bin/cp -a * $DEPLOYPATH
