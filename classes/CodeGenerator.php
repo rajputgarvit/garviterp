@@ -132,20 +132,40 @@ class CodeGenerator {
      */
     public function generateInvoiceNumber() {
         $year = date('Y');
-        $lastInvoice = $this->db->fetchOne(
-            "SELECT invoice_number FROM invoices WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1",
-            ["INV-$year-%"]
-        );
+        $prefix = 'INV';
+        $companyId = $_SESSION['company_id'] ?? null;
+        
+        if ($companyId) {
+            $settings = $this->db->fetchOne("SELECT invoice_prefix FROM company_settings WHERE id = ?", [$companyId]);
+            if ($settings && !empty($settings['invoice_prefix'])) {
+                $prefix = $settings['invoice_prefix'];
+            }
+        }
+        
+        // Filter by company_id if available to increment based on company's own sequence
+        // Note: invoice_number is globally unique, so if multiple companies use same prefix, there could be collisions.
+        // Ideally prefixes should be unique or numbers global. Assuming current behavior for now but adding company filter for sequence.
+        $sql = "SELECT invoice_number FROM invoices WHERE invoice_number LIKE ? ";
+        $params = ["$prefix-$year-%"];
+        
+        if ($companyId) {
+            $sql .= "AND company_id = ? ";
+            $params[] = $companyId;
+        }
+        
+        $sql .= "ORDER BY id DESC LIMIT 1";
+        
+        $lastInvoice = $this->db->fetchOne($sql, $params);
         
         if (!$lastInvoice) {
-            return "INV-$year-001";
+            return "$prefix-$year-001";
         }
         
         $parts = explode('-', $lastInvoice['invoice_number']);
         $number = (int) end($parts);
         $newNumber = $number + 1;
         
-        return "INV-$year-" . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+        return "$prefix-$year-" . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
     }
     
     /**
