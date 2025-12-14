@@ -1,15 +1,30 @@
 <?php
-// Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'garviterp');
+// Determine Environment
+if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1') {
+    // Database Configuration - Local
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_NAME', 'garviterp');
 
-// Application Configuration
-define('APP_NAME', 'Hawk ERP');
-define('APP_VERSION', '1.0.0');
-define('BASE_URL', 'http://localhost/garvitrajput/');
-define('MODULES_URL', BASE_URL . 'modules');
+    // Application Configuration - Local
+    define('APP_NAME', 'Hawk ERP');
+    define('APP_VERSION', '1.0.0');
+    define('BASE_URL', 'http://localhost/garvitrajput/');
+    define('MODULES_URL', BASE_URL . 'modules');
+} else {
+    // Database Configuration - Prod
+    define('DB_HOST', 'sdb-68.hosting.stackcp.net');
+    define('DB_USER', 'garviterp-353034391dd2');
+    define('DB_PASS', 'garviterp353034391dd2');
+    define('DB_NAME', 'garviterp-353034391dd2');
+
+    // Application Configuration - Prod
+    define('APP_NAME', 'Hawk ERP');
+    define('APP_VERSION', '1.0.0');
+    define('BASE_URL', 'http://garvitrajput.co.in/');
+    define('MODULES_URL', BASE_URL . 'modules');
+}
 
 // Session Configuration
 define('SESSION_LIFETIME', 3600); // 1 hour
