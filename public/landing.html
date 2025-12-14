@@ -18,7 +18,8 @@
     <nav class="navbar">
         <div class="container">
             <a href="#" class="nav-brand">
-                <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg" alt="Acculynce Systems" style="max-width: 150px; max-height: 60px; height: auto; mix-blend-mode: multiply;" />
+                <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg" alt="Acculynce Systems"
+                    style="max-width: 150px; max-height: 60px; height: auto; mix-blend-mode: multiply;" />
             </a>
             <ul class="nav-menu">
                 <li><a href="#features">Features</a></li>
@@ -356,8 +357,9 @@
             <div class="footer-grid">
                 <div class="footer-col">
                     <a href="#" class="nav-brand footer-brand">
-                        <i class="fas fa-layer-group"></i>
-                        <span>Acculynce</span>
+                        <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg"
+                            alt="Acculynce Systems"
+                            style="max-width: 150px; max-height: 60px; height: auto; mix-blend-mode: multiply;" />
                     </a>
                     <p class="footer-desc">
                         The complete operating system for modern businesses. Built for scale, designed for simplicity.
@@ -397,7 +399,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 Acculynce Inc. All rights reserved.</p>
+                <p>&copy; <span id="currentYear"></span> Acculynce Inc. All rights reserved.</p>
                 <div class="legal-links">
                     <a href="privacy-policy.html" style="margin-right: 20px;">Privacy Policy</a>
                     <a href="terms-of-service.html">Terms of Service</a>
@@ -407,6 +409,9 @@
     </footer>
 
     <script src="assets/js/landing.js"></script>
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
 </body>
 
 </html>
