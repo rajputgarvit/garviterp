@@ -12,6 +12,6 @@ if ($auth->isLoggedIn()) {
         header('Location: ' . MODULES_URL . '/dashboard/index.php');
     }
 } else {
-    header('Location: ' . MODULES_URL . '/auth/login.php');
+    header('Location: ' . MODULES_URL . '/public/landing.html');
 }
 exit;
