@@ -280,7 +280,16 @@ class Auth {
             return false;
         }
 
-        $targetUser = $this->db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
+        $targetUser = $this->db->fetchOne(
+            "SELECT u.*, GROUP_CONCAT(r.name) as roles 
+             FROM users u 
+             LEFT JOIN user_roles ur ON u.id = ur.user_id 
+             LEFT JOIN roles r ON ur.role_id = r.id 
+             WHERE u.id = ?
+             GROUP BY u.id", 
+            [$userId]
+        );
+
         if (!$targetUser) {
             return false;
         }
@@ -298,15 +307,6 @@ class Auth {
         // Set session to target user
         $this->setSession($targetUser);
         
-        // Fetch roles for target user
-        $roles = $this->db->fetchAll(
-            "SELECT r.name FROM roles r 
-             JOIN user_roles ur ON r.id = ur.role_id 
-             WHERE ur.user_id = ?", 
-            [$userId]
-        );
-        $_SESSION['roles'] = implode(',', array_column($roles, 'name'));
-
         return true;
     }
 

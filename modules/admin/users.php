@@ -2,13 +2,13 @@
 $pageTitle = 'User Management';
 $currentPage = 'users';
 require_once '../../config/config.php';
-require_once '../../includes/admin_layout.php';
-
-$db = Database::getInstance();
-
+require_once '../../classes/Database.php';
+require_once '../../classes/Auth.php';
 // Handle Actions
-if (isset($_POST['action']) && isset($_POST['user_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_POST['user_id'])) {
+    $db = Database::getInstance();
     $userId = $_POST['user_id'];
+    
     if ($_POST['action'] === 'toggle_status') {
         $currentStatus = $db->fetchOne("SELECT is_active FROM users WHERE id = ?", [$userId])['is_active'];
         $newStatus = $currentStatus ? 0 : 1;
@@ -56,6 +56,10 @@ if (isset($_POST['action']) && isset($_POST['user_id'])) {
         }
     }
 }
+
+require_once '../../includes/admin_layout.php';
+
+$db = Database::getInstance();
 
 // Fetch Users
 $users = $db->fetchAll("
