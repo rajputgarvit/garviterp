@@ -5,7 +5,7 @@ $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' 
 // Determine Environment
 if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1') {
     // Database Configuration - Local
-    define('DB_HOST', 'localhost');
+    define('DB_HOST', '127.0.0.1');
     define('DB_USER', 'root');
     define('DB_PASS', '');
     define('DB_NAME', 'garviterp');

@@ -25,9 +25,39 @@ $auth = new Auth();
                 $auth->logout();
                 $error = 'System is currently in maintenance mode. Only administrators can log in.';
             } else {
+                // Check if Super Admin needs to setup company (e.g. after reset)
+                file_put_contents('login_debug.txt', "Login successful for user ID: " . $auth->getCurrentUser()['id'] . "\n", FILE_APPEND);
+                file_put_contents('login_debug.txt', "Roles: " . json_encode($auth->getCurrentUser()['roles']) . "\n", FILE_APPEND);
+                file_put_contents('login_debug.txt', "Is Super Admin? " . ($auth->hasRole('Super Admin') ? 'Yes' : 'No') . "\n", FILE_APPEND);
+                
+                if ($auth->hasRole('Super Admin')) {
+                    $currentUser = $auth->getCurrentUser();
+                    $companyId = $currentUser['company_id'];
+                    $companyExists = false;
+                    
+                    file_put_contents('login_debug.txt', "Company ID: " . $companyId . "\n", FILE_APPEND);
+                    
+                    if (!empty($companyId)) {
+                        $companyCheck = $db->fetchOne("SELECT id FROM company_settings WHERE id = ?", [$companyId]);
+                        if ($companyCheck) {
+                            $companyExists = true;
+                        }
+                    }
+                    
+                    file_put_contents('login_debug.txt', "Company Exists? " . ($companyExists ? 'Yes' : 'No') . "\n", FILE_APPEND);
+                    
+                    if (!$companyExists) {
+                        file_put_contents('login_debug.txt', "Redirecting to setup_company.php\n", FILE_APPEND);
+                        header('Location: ' . MODULES_URL . '/admin/setup_company.php');
+                        exit;
+                    }
+                }
+
                 if ($auth->isAdmin()) {
+                    file_put_contents('login_debug.txt', "Redirecting to admin/dashboard.php\n", FILE_APPEND);
                     header('Location: ' . MODULES_URL . '/admin/dashboard.php');
                 } else {
+                    file_put_contents('login_debug.txt', "Redirecting to dashboard/index.php\n", FILE_APPEND);
                     header('Location: ' . MODULES_URL . '/dashboard/index.php');
                 }
                 exit;

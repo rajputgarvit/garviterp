@@ -11,6 +11,22 @@ $db = Database::getInstance();
 $user = $auth->getCurrentUser();
 $companyId = $user['company_id'];
 
+// Check if company exists for Super Admin, if not redirect to setup
+if ($auth->hasRole('Super Admin')) {
+    $companyExists = false;
+    if (!empty($companyId)) {
+        $companyCheck = $db->fetchOne("SELECT id FROM company_settings WHERE id = ?", [$companyId]);
+        if ($companyCheck) {
+            $companyExists = true;
+        }
+    }
+    
+    if (!$companyExists) {
+        header('Location: ' . MODULES_URL . '/admin/setup_company.php');
+        exit;
+    }
+}
+
 // Get dashboard statistics
 $stats = [
     'total_employees' => $db->fetchOne("SELECT COUNT(*) as count FROM employees WHERE status = 'Active' AND company_id = ?", [$companyId])['count'] ?? 0,

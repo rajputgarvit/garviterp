@@ -83,6 +83,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $db->query("TRUNCATE TABLE `$tableName`");
                 }
             }
+            // RE-SEED DEFAULT ROLES AND PERMISSIONS
+            // 1. Create Roles
+            $db->query("INSERT INTO roles (name, description) VALUES ('Super Admin', 'Full Access')");
+            $superAdminRoleId = $db->getConnection()->lastInsertId();
+            
+            $db->query("INSERT INTO roles (name, description) VALUES ('Admin', 'Company Administrator')");
+            $db->query("INSERT INTO roles (name, description) VALUES ('Employee', 'Standard User')");
+            
+            // 2. Assign Super Admin Role to preserved user
+            $db->query("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", [$superAdminId, $superAdminRoleId]);
             
             // Re-enable Foreign Key Checks
             $db->getConnection()->exec("SET FOREIGN_KEY_CHECKS = 1");
