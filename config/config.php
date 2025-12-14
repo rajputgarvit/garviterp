@@ -3,6 +3,7 @@
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
 
 // Determine Environment
+// Determine Environment
 if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1') {
     // Database Configuration - Local
     define('DB_HOST', '127.0.0.1');
@@ -11,21 +12,36 @@ if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.
     define('DB_NAME', 'garviterp');
 
     // Application Configuration - Local
-    define('APP_NAME', 'Hawk ERP');
+    define('APP_NAME', 'Acculynce');
     define('APP_VERSION', '1.0.0');
     define('BASE_URL', $protocol . 'localhost/garvitrajput/');
     define('MODULES_URL', BASE_URL . 'modules');
-} else {
-    // Database Configuration - Prod
-    define('DB_HOST', 'sdb-68.hosting.stackcp.net');
-    define('DB_USER', 'garviterp-353034391dd2');
-    define('DB_PASS', 'garviterp353034391dd2');
-    define('DB_NAME', 'garviterp-353034391dd2');
 
-    // Application Configuration - Prod
-    define('APP_NAME', 'Hawk ERP');
+} elseif ($_SERVER['HTTP_HOST'] === 'dev.acculynce.com') {
+    // Database Configuration - Development
+    // Using Prod DB credentials for now as placeholders, assuming shared or same server
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'eroiwmza_acculynce');
+    define('DB_PASS', 'acculynce@246761');
+    define('DB_NAME', 'eroiwmza_acculynce');
+
+    // Application Configuration - Development
+    define('APP_NAME', 'Acculynce');
+    define('APP_VERSION', '1.0.0-dev');
+    define('BASE_URL', $protocol . 'dev.acculynce.com/');
+    define('MODULES_URL', BASE_URL . 'modules');
+
+} else {
+    // Database Configuration - Production (acculynce.com)
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'eroiwmza_acculynce');
+    define('DB_PASS', 'acculynce@246761');
+    define('DB_NAME', 'eroiwmza_acculynce');
+
+    // Application Configuration - Production
+    define('APP_NAME', 'Acculynce');
     define('APP_VERSION', '1.0.0');
-    define('BASE_URL', $protocol . 'garvitrajput.co.in/');
+    define('BASE_URL', $protocol . 'acculynce.com/');
     define('MODULES_URL', BASE_URL . 'modules');
 }
 

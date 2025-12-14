@@ -231,7 +231,7 @@ class Auth {
         
         // Send email (simplified version - should use proper email service)
         $verificationLink = BASE_URL . "verify-email.php?token=" . $token;
-        $subject = "Verify your HawkERP account";
+        $subject = "Verify your Acculynce account";
         $message = "Click the link to verify your email: " . $verificationLink;
         
         // In production, use proper email service
