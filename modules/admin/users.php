@@ -119,47 +119,49 @@ $users = $db->fetchAll("
                         <?php endif; ?>
                     </td>
                     <td>
-                        <form method="POST" style="display: inline;">
-                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                            <input type="hidden" name="action" value="toggle_status">
-                            <?php if ($user['is_active']): ?>
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Deactivate this user?')">
-                                    Deactivate
+                        <div style="display: flex; gap: 5px; align-items: center; flex-wrap: nowrap;">
+                            <form method="POST">
+                                <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                <input type="hidden" name="action" value="toggle_status">
+                                <?php if ($user['is_active']): ?>
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Deactivate this user?')" title="Deactivate User">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Activate this user?')" title="Activate User">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </form>
+                            
+                            <form method="POST">
+                                <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                <input type="hidden" name="action" value="impersonate">
+                                <button type="submit" class="btn btn-sm btn-secondary" onclick="return confirm('Login as <?php echo htmlspecialchars($user['full_name']); ?>?')" title="Login as <?php echo htmlspecialchars($user['full_name']); ?>">
+                                    <i class="fas fa-user-secret"></i>
                                 </button>
-                            <?php else: ?>
-                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Activate this user?')">
-                                    Activate
+                            </form>
+                            
+                            <a href="user_edit.php?id=<?php echo $user['id']; ?>" class="btn btn-sm btn-primary" title="Edit User">
+                                <i class="fas fa-edit"></i>
+                            </a>
+
+                            <form method="POST">
+                                <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                <input type="hidden" name="action" value="delete_user">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.')" title="Delete User">
+                                    <i class="fas fa-trash-alt"></i>
                                 </button>
-                            <?php endif; ?>
-                        </form>
-                        
-                        <form method="POST" style="display: inline; margin-left: 5px;">
-                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                            <input type="hidden" name="action" value="impersonate">
-                            <button type="submit" class="btn btn-sm btn-secondary" onclick="return confirm('Login as <?php echo htmlspecialchars($user['full_name']); ?>?')">
-                                <i class="fas fa-user-secret"></i> Login as
-                            </button>
-                        </form>
-                        
-                        <a href="user_edit.php?id=<?php echo $user['id']; ?>" class="btn btn-sm btn-primary" title="Edit User" style="margin-left: 5px;">
-                            <i class="fas fa-edit"></i>
-                        </a>
+                            </form>
 
-                        <form method="POST" style="display: inline; margin-left: 5px;">
-                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                            <input type="hidden" name="action" value="delete_user">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.')" title="Delete User">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </form>
-
-                        <form method="POST" style="display: inline; margin-left: 5px;">
-                            <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                            <input type="hidden" name="action" value="reset_password">
-                            <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Reset password to user@123 for this user?')" title="Reset Password">
-                                <i class="fas fa-key"></i>
-                            </button>
-                        </form>
+                            <form method="POST">
+                                <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                <input type="hidden" name="action" value="reset_password">
+                                <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Reset password to user@123 for this user?')" title="Reset Password">
+                                    <i class="fas fa-key"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>

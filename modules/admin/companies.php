@@ -53,11 +53,9 @@ $companies = $db->fetchAll("
                     </td>
                     <td><?php echo date('M j, Y', strtotime($company['created_at'])); ?></td>
                     <td>
-                    <td>
                         <a href="company_details.php?id=<?php echo $company['id']; ?>" class="btn btn-sm btn-secondary" title="View Details">
                             <i class="fas fa-eye"></i> View
                         </a>
-                    </td>
                     </td>
                 </tr>
                 <?php endforeach; ?>

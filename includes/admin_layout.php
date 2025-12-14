@@ -120,7 +120,7 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                     <?php else: ?>
                         <i class="fas fa-shield-alt" style="color: #3699ff;"></i>
                     <?php endif; ?>
-                    <?php echo htmlspecialchars(!empty($brandingSettings['app_name']) ? $brandingSettings['app_name'] . ' Admin' : 'Tiger Admin'); ?>
+                    <!-- <?php echo htmlspecialchars(!empty($brandingSettings['app_name']) ? $brandingSettings['app_name'] . ' Admin' : 'Tiger Admin'); ?> -->
                 </h2>
             </div>
             
