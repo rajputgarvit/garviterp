@@ -18,6 +18,11 @@ if (!$isSpaRequest):
         <h1><?php echo ucwords(str_replace(['-', '_'], [' ', ' '], basename(dirname($_SERVER['PHP_SELF'])))); ?></h1>
     </div>
     <div class="header-right">
+        <?php if ($auth->hasRole('Super Admin')): ?>
+            <a href="<?php echo MODULES_URL; ?>/admin/dashboard.php" class="btn btn-primary btn-sm" style="margin-right: 15px;">
+                <i class="fas fa-user-shield"></i> Admin Panel
+            </a>
+        <?php endif; ?>
         <div class="user-menu">
             <div class="user-avatar">
                 <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
