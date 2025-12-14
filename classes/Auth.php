@@ -41,7 +41,11 @@ class Auth {
     
     public function logout() {
         if (isset($_SESSION['user_id'])) {
-            $this->logAudit($_SESSION['user_id'], 'logout', 'users', $_SESSION['user_id']);
+            try {
+                $this->logAudit($_SESSION['user_id'], 'logout', 'users', $_SESSION['user_id']);
+            } catch (Exception $e) {
+                // Ignore audit error during logout if user doesn't exist
+            }
         }
         
         session_destroy();

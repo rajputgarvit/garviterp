@@ -167,6 +167,11 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                         <span>Settings</span>
                     </a>
                     
+                    <a href="<?php echo MODULES_URL; ?>/admin/reset_database.php" class="menu-item <?php echo ($currentPage === 'reset_database') ? 'active' : ''; ?>" style="border-left: 3px solid #dc2626;">
+                        <i class="fas fa-database" style="color: #dc2626 !important;"></i>
+                        <span style="color: #dc2626;">Reset Database</span>
+                    </a>
+                    
                     <a href="<?php echo MODULES_URL; ?>/dashboard/index.php" class="menu-item">
                         <i class="fas fa-external-link-alt"></i>
                         <span>Go to ERP</span>
@@ -190,7 +195,7 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                         <span><?php echo htmlspecialchars($currentUser['full_name']); ?></span>
                         <span class="admin-badge">Super Admin</span>
                     </div>
-                    <a href="<?php echo BASE_URL; ?>logout.php" class="btn btn-sm btn-danger">
+                    <a href="<?php echo MODULES_URL; ?>/auth/logout.php" class="btn btn-sm btn-danger">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </a>
                 </div>
