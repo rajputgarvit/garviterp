@@ -1,5 +1,5 @@
 <?php
-session_start();
+// session_start(); // Handled in config.php
 require_once 'config/config.php';
 require_once 'classes/Auth.php';
 

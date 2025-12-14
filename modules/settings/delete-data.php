@@ -1,5 +1,5 @@
 <?php
-session_start();
+// session_start(); // Handled in config.php
 
 // Disable error display to prevent HTML output in JSON response
 ini_set('display_errors', 0);

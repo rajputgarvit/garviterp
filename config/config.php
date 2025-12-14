@@ -27,7 +27,24 @@ if ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.
 }
 
 // Session Configuration
-define('SESSION_LIFETIME', 3600); // 1 hour
+define('SESSION_LIFETIME', 86400); // 24 hours
+
+ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
+
+$cookieParams = [
+    'lifetime' => SESSION_LIFETIME,
+    'path' => '/',
+    'domain' => '', // Default to current domain
+    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+    'httponly' => true,
+    'samesite' => 'Lax'
+];
+
+session_set_cookie_params($cookieParams);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Timezone
 date_default_timezone_set('Asia/Kolkata');
