@@ -1,5 +1,5 @@
 <?php
-require_once 'Database.php';
+require_once __DIR__ . '/Database.php';
 
 class Auth {
     private $db;
@@ -167,15 +167,13 @@ class Auth {
         // Insert user
         $userId = $this->db->insert('users', $data);
         
-        // Assign all roles except Super Admin
-        $roles = $this->db->fetchAll("SELECT id FROM roles WHERE name != 'Super Admin'");
-        
-        foreach ($roles as $role) {
-            $this->db->insert('user_roles', [
-                'user_id' => $userId,
-                'role_id' => $role['id']
-            ]);
-        }
+        // Assign default role (Admin for the new company creator)
+        // Assuming role_id 2 is Admin (need to verify, but usually 1=Super Admin, 2=Admin, 4=Employee)
+        // Let's use 2 (Admin) for the company creator
+        $this->db->insert('user_roles', [
+            'user_id' => $userId,
+            'role_id' => 2 // Admin role
+        ]);
         
         return ['success' => true, 'user_id' => $userId];
     }
