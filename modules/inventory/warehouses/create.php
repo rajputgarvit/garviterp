@@ -7,10 +7,9 @@ require_once '../../../classes/CodeGenerator.php';
 require_once '../../../classes/ReferenceData.php';
 
 $auth = new Auth();
-$auth->requireLogin();
-$user = $auth->getCurrentUser();
-
+// Auth::enforceGlobalRouteSecurity() handles permissions.
 $db = Database::getInstance();
+$user = $auth->getCurrentUser();
 $codeGen = new CodeGenerator();
 $refData = new ReferenceData();
 

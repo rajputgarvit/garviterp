@@ -4,6 +4,10 @@ $currentPage = 'dashboard';
 require_once '../../config/config.php';
 require_once '../../includes/admin_layout.php';
 
+$auth = new Auth();
+// Auth::enforceGlobalRouteSecurity() handles permissions.
+$user = $auth->getCurrentUser();
+
 // Fetch stats
 $db = Database::getInstance();
 $totalUsers = $db->fetchOne("SELECT COUNT(*) as count FROM users")['count'];

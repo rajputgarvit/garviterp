@@ -5,7 +5,7 @@ require_once '../../classes/Auth.php';
 require_once '../../classes/Database.php';
 
 $auth = new Auth();
-$auth->requireLogin();
+// Auth::enforceGlobalRouteSecurity() handles permissions.
 $user = $auth->getCurrentUser();
 $db = Database::getInstance();
 

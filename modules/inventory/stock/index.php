@@ -7,6 +7,11 @@ require_once '../../../classes/Database.php';
 $auth = new Auth();
 $auth->requireLogin();
 
+if (!$auth->hasPermission('inventory', 'view')) {
+    header('Location: ' . BASE_URL . 'modules/dashboard/index.php?error=Access denied');
+    exit;
+}
+
 $db = Database::getInstance();
 $user = $auth->getCurrentUser();
 

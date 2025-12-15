@@ -2,13 +2,13 @@
 // modules/settings/permissions.php
 require_once '../../config/config.php';
 require_once '../../classes/Auth.php';
+require_once '../../config/config.php';
 require_once '../../classes/Database.php';
 
+// Auth::enforceGlobalRouteSecurity() in config.php handles checks now.
 $auth = new Auth();
-$auth->requireLogin();
-$user = $auth->getCurrentUser();
-$db = Database::getInstance();
 
+$db = Database::getInstance();
 $roleId = $_GET['role_id'] ?? null;
 
 if (!$roleId) {

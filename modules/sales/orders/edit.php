@@ -6,11 +6,10 @@ require_once '../../../classes/Database.php';
 require_once '../../../classes/CodeGenerator.php';
 
 $auth = new Auth();
-$auth->requireLogin();
-
+// Auth::enforceGlobalRouteSecurity() handles permissions.
+$user = $auth->getCurrentUser();
 $db = Database::getInstance();
 $codeGen = new CodeGenerator();
-$user = $auth->getCurrentUser();
 
 if (!isset($_GET['id'])) {
     header('Location: index.php');

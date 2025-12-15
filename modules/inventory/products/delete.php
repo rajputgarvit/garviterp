@@ -7,6 +7,17 @@ require_once '../../../classes/Database.php';
 $auth = new Auth();
 $auth->requireLogin();
 
+if (!$auth->hasPermission('inventory', 'delete')) {
+    $msg = 'Access denied';
+    if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $msg]);
+        exit;
+    }
+    header('Location: ' . BASE_URL . 'modules/dashboard/index.php?error=' . urlencode($msg));
+    exit;
+}
+
 $db = Database::getInstance();
 $user = $auth->getCurrentUser();
 

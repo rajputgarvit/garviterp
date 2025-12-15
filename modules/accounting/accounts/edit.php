@@ -8,6 +8,11 @@ require_once '../../../classes/CodeGenerator.php';
 $auth = new Auth();
 $auth->requireLogin();
 
+if (!$auth->hasPermission('accounting', 'edit')) {
+    header('Location: ' . BASE_URL . 'modules/dashboard/index.php?error=Access denied');
+    exit;
+}
+
 $db = Database::getInstance();
 $codeGen = new CodeGenerator();
 $user = $auth->getCurrentUser();

@@ -4,8 +4,8 @@ require_once '../../../config/config.php';
 require_once '../../../classes/Auth.php';
 require_once '../../../classes/Database.php';
 
+// Auth::enforceGlobalRouteSecurity() in config.php handles checks now.
 $auth = new Auth();
-$auth->requireLogin();
 
 $db = Database::getInstance();
 $user = $auth->getCurrentUser();

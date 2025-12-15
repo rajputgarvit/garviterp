@@ -7,8 +7,7 @@ require_once '../../../classes/CodeGenerator.php';
 require_once '../../../classes/StockManager.php';
 
 $auth = new Auth();
-$auth->requireLogin();
-
+// Auth::enforceGlobalRouteSecurity() handles permissions.
 $db = Database::getInstance();
 $codeGen = new CodeGenerator();
 $stockManager = new StockManager();

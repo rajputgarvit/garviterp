@@ -6,11 +6,10 @@ require_once '../../classes/Database.php';
 require_once '../../classes/ReferenceData.php';
 
 $auth = new Auth();
-$auth->requireLogin();
-
+// Auth::enforceGlobalRouteSecurity() handles permissions.
 $db = Database::getInstance();
-$refData = new ReferenceData();
 $user = $auth->getCurrentUser();
+$refData = new ReferenceData();
 
 $states = $refData->getStates();
 

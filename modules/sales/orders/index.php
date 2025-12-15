@@ -5,7 +5,6 @@ require_once '../../../classes/Auth.php';
 require_once '../../../classes/Database.php';
 
 $auth = new Auth();
-$auth->requireLogin();
 
 $db = Database::getInstance();
 $user = $auth->getCurrentUser();

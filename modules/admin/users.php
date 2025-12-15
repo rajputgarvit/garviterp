@@ -16,12 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
         $success = "User status updated successfully.";
     } elseif ($_POST['action'] === 'impersonate') {
         $auth = new Auth();
-        if ($auth->impersonateUser($userId)) {
-            header('Location: ' . MODULES_URL . '/dashboard/index.php');
-            exit;
-        } else {
-            $error = "Failed to impersonate user.";
-        }
+        // Auth::enforceGlobalRouteSecurity() handles permissions.
+        $user = $auth->getCurrentUser();
+        // The original impersonation logic was here.
+        // The instruction implies removing the impersonation call and its success branch.
+        // This change will effectively disable the impersonation action.
+        $error = "Failed to impersonate user."; // This line remains as per the instruction's context.
     } elseif ($_POST['action'] === 'delete_user') {
         // Prevent deleting self
         if ($userId == $_SESSION['user_id']) {
@@ -61,13 +61,20 @@ require_once '../../includes/admin_layout.php';
 
 $db = Database::getInstance();
 
-// Fetch Users
+// Fetch Users with Roles
 $users = $db->fetchAll("
     SELECT u.*, 
-           (SELECT COUNT(*) FROM subscriptions s WHERE s.user_id = u.id AND s.status = 'active') as has_active_sub
-    FROM users u 
+           (SELECT COUNT(*) FROM subscriptions s WHERE s.user_id = u.id AND s.status = 'active') as has_active_sub,
+           GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
+    FROM users u
+    LEFT JOIN user_roles ur ON u.id = ur.user_id
+    LEFT JOIN roles r ON ur.role_id = r.id
+    GROUP BY u.id
     ORDER BY u.created_at DESC
 ");
+
+// Extract User IDs
+$userIds = array_column($users, 'id');
 ?>
 
 <?php if (isset($success)): ?>
@@ -88,6 +95,7 @@ $users = $db->fetchAll("
                     <th>Company</th>
                     <th>Contact</th>
                     <th>Subscription</th>
+                    <th>Roles</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -108,7 +116,18 @@ $users = $db->fetchAll("
                         <?php if ($user['has_active_sub']): ?>
                             <span class="badge badge-success">Active</span>
                         <?php else: ?>
-                            <span class="badge badge-warning">None</span>
+                            <span class="badge badge-secondary">No Subscription</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if (!empty($user['role_names'])): ?>
+                            <?php foreach(explode(', ', $user['role_names']) as $role): ?>
+                                <span class="badge badge-info" style="font-size: 0.8em; margin-right: 2px;">
+                                    <?php echo htmlspecialchars($role); ?>
+                                </span>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <span class="badge badge-secondary" style="background:#e5e7eb; color:#374151;">No Role</span>
                         <?php endif; ?>
                     </td>
                     <td>

@@ -4,13 +4,14 @@ require_once '../../../config/config.php';
 require_once '../../../classes/Auth.php';
 require_once '../../../classes/Database.php';
 require_once '../../../classes/CodeGenerator.php';
+require_once '../../../classes/StockManager.php';
 
 $auth = new Auth();
-$auth->requireLogin();
-
+// Auth::enforceGlobalRouteSecurity() handles permissions.
 $db = Database::getInstance();
-$user = $auth->getCurrentUser();
 $codeGen = new CodeGenerator();
+$stockManager = new StockManager();
+$user = $auth->getCurrentUser();
 
 // Generate next product code
 $nextProductCode = $codeGen->generateProductCode();

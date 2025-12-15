@@ -6,7 +6,7 @@ require_once '../../../classes/Database.php';
 require_once '../../../classes/CodeGenerator.php';
 
 $auth = new Auth();
-$auth->requireLogin();
+// Auth::enforceGlobalRouteSecurity() handles permissions.
 
 $db = Database::getInstance();
 $codeGen = new CodeGenerator();
