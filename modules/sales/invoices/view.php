@@ -7,6 +7,7 @@ require_once '../../../classes/Database.php';
 $auth = new Auth();
 // Auth::enforceGlobalRouteSecurity() handles permissions.
 $user = $auth->getCurrentUser();
+$db = Database::getInstance();
 
 // Get invoice ID from URL
 $invoiceId = $_GET['id'] ?? null;
