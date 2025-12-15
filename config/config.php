@@ -89,3 +89,17 @@ define('ASSETS_PATH', PUBLIC_PATH . '/assets');
 function module_path($module, $file = '') {
     return MODULES_PATH . '/' . $module . ($file ? '/' . $file : '');
 }
+
+// -----------------------------------------------------------------------------
+// CENTRAL ROUTE SECURITY ENFORCEMENT
+// -----------------------------------------------------------------------------
+// This "passes all routes through one file" logic by intercepting execution here.
+// Only run if we are not in a CLI environment.
+if (php_sapi_name() !== 'cli') {
+    // Only enforce if the class file exists (setup phase protection)
+    if (file_exists(CLASSES_PATH . '/Auth.php')) {
+        require_once CLASSES_PATH . '/Auth.php';
+        $auth = new Auth();
+        $auth->enforceGlobalRouteSecurity();
+    }
+}

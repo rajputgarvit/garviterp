@@ -214,6 +214,51 @@ class Auth {
             exit;
         }
     }
+
+    /**
+     * Guards access to a specific module and action.
+     * If the user does not have permission, it redirects them.
+     */
+    public function guard($module, $action) {
+        if (!$this->hasPermission($module, $action)) {
+            // Standard redirect
+            $redirect = defined('BASE_URL') ? BASE_URL : '/garvitrajput/';
+            header('Location: ' . $redirect . 'modules/dashboard/index.php?error=Access denied: ' . ucfirst($module) . ' ' . ucfirst($action));
+            exit;
+        }
+    }
+
+    /**
+     * Checks current URL against central route map and enforces permissions automatically.
+     */
+    public function enforceGlobalRouteSecurity() {
+        if (php_sapi_name() === 'cli') return; // detailed verify
+
+        $routes = require __DIR__ . '/../config/route_permissions.php';
+        
+        // Get relative path: /garvitrajput/modules/sales/index.php -> modules/sales/index.php
+        $scriptName = $_SERVER['SCRIPT_NAME'];
+        $basePath = parse_url(BASE_URL, PHP_URL_PATH);
+        if ($basePath && strpos($scriptName, $basePath) === 0) {
+            $relativePath = substr($scriptName, strlen($basePath));
+        } else {
+            $relativePath = ltrim($scriptName, '/');
+        }
+        $relativePath = ltrim($relativePath, '/'); // Ensure no leading slash
+
+        foreach ($routes as $pattern => $perms) {
+            if (preg_match($pattern, $relativePath)) {
+                // Determine if we need to check login first
+                // If it's a secured route, we MUST be logged in
+                if (!$this->isLoggedIn()) {
+                    $this->requireLogin();
+                }
+                
+                $this->guard($perms[0], $perms[1]);
+                break; // Stop after first match
+            }
+        }
+    }
     
     /**
      * Send email verification

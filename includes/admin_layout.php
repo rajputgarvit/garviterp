@@ -8,7 +8,7 @@ require_once __DIR__ . '/../classes/Auth.php';
 $auth = new Auth();
 $auth->requireLogin();
 
-if (!$auth->hasRole('Super Admin')) {
+if (!$auth->hasPermission('super_admin', 'view')) {
     header('Location: ' . MODULES_URL . '/dashboard/index.php');
     exit;
 }
@@ -157,6 +157,11 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                 <div class="menu-section">
                     <div class="menu-section-title">System</div>
                     
+                    <a href="<?php echo MODULES_URL; ?>/admin/roles.php" class="menu-item <?php echo ($currentPage === 'roles') ? 'active' : ''; ?>">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Roles & Permissions</span>
+                    </a>
+
                     <a href="<?php echo MODULES_URL; ?>/admin/audit-logs.php" class="menu-item <?php echo ($currentPage === 'audit-logs') ? 'active' : ''; ?>">
                         <i class="fas fa-history"></i>
                         <span>Audit Logs</span>
