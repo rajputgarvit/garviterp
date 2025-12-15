@@ -41,7 +41,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <div class="menu-section">
-            <?php if ($auth->hasModuleAccess('hrm')): ?>
+            <?php if ($auth->hasModuleAccess('hrm') && $auth->hasPermission('hrm', 'view')): ?>
             <div class="menu-section-title">
                 <span>HR Management</span>
             </div>
@@ -73,7 +73,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <div class="menu-section">
-            <?php if ($auth->hasModuleAccess('inventory')): ?>
+            <?php if ($auth->hasModuleAccess('inventory') && $auth->hasPermission('inventory', 'view')): ?>
         <div class="menu-section-title">
                 <span>Inventory</span>
             </div>
@@ -97,7 +97,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <div class="menu-section">
-            <?php if ($auth->hasModuleAccess('sales')): ?>
+            <?php if ($auth->hasModuleAccess('sales') && $auth->hasPermission('sales', 'view')): ?>
             <div class="menu-section-title">
                 <span>Sales</span>
             </div>
@@ -137,7 +137,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <div class="menu-section">
-            <?php if ($auth->hasModuleAccess('purchases')): ?>
+            <?php if ($auth->hasModuleAccess('purchases') && $auth->hasPermission('purchases', 'view')): ?>
             <div class="menu-section-title">
                 <span>Purchase</span>
             </div>
@@ -157,7 +157,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <div class="menu-section">
-            <?php if ($auth->hasModuleAccess('accounting')): ?>
+            <?php if ($auth->hasModuleAccess('accounting') && $auth->hasPermission('accounting', 'view')): ?>
             <div class="menu-section-title">
                 <span>Accounting</span>
             </div>
@@ -181,7 +181,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <div class="menu-section">
-            <?php if ($auth->hasModuleAccess('crm')): ?>
+            <?php if ($auth->hasModuleAccess('crm') && $auth->hasPermission('crm', 'view')): ?>
             <div class="menu-section-title">
                 <span>CRM</span>
             </div>
@@ -197,31 +197,34 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
             <div class="menu-section-title">
                 <span>Production</span>
             </div>
-
-                <a href="#" class="menu-item" title="Bill of Materials">
-                    <i class="fas fa-list-alt"></i>
-                    <span>Bill of Materials</span>
-                </a>
-                <a href="#" class="menu-item" title="Work Orders">
-                    <i class="fas fa-industry"></i>
-                    <span>Work Orders</span>
-                </a>
         </div> -->
         
         <div class="menu-section">
+            <?php 
+            $canViewSettings = $auth->hasPermission('settings', 'view');
+            $canEditSettings = $auth->hasPermission('settings', 'edit');
+            
+            if ($canViewSettings || $canEditSettings): 
+            ?>
             <div class="menu-section-title">
                 <span>System</span>
             </div>
 
+                <?php if ($canEditSettings): ?>
                 <a href="<?php echo MODULES_URL; ?>/settings/company" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/settings/company.php') !== false ? 'active' : ''; ?>" title="Company Settings">
                     <i class="fas fa-building"></i>
                     <span>Company Settings</span>
                 </a>
+                <?php endif; ?>
+
+                <?php if ($canViewSettings): ?>
                 <a href="<?php echo MODULES_URL; ?>/settings/index" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/settings/index.php') !== false ? 'active' : ''; ?>" title="System Settings">
                     <i class="fas fa-cog"></i>
                     <span>System Settings</span>
                 </a>
+                <?php endif; ?>
 
+            <?php endif; ?>
         </div>
     </nav>
 </aside>
