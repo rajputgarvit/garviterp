@@ -49,8 +49,14 @@ $companies = $db->fetchAll("
         c.created_at,
         (SELECT COUNT(*) FROM users u WHERE u.company_id = c.id) as user_count,
         (SELECT full_name FROM users u WHERE u.company_id = c.id ORDER BY u.created_at ASC LIMIT 1) as owner_name,
-        (SELECT email FROM users u WHERE u.company_id = c.id ORDER BY u.created_at ASC LIMIT 1) as owner_email
+        (SELECT email FROM users u WHERE u.company_id = c.id ORDER BY u.created_at ASC LIMIT 1) as owner_email,
+        s.plan_name,
+        s.status as subscription_status,
+        s.trial_ends_at
     FROM company_settings c
+    LEFT JOIN subscriptions s ON c.id = s.company_id AND s.id = (
+        SELECT MAX(id) FROM subscriptions WHERE company_id = c.id
+    )
     ORDER BY c.created_at DESC
 ");
 ?>
@@ -109,6 +115,24 @@ $companies = $db->fetchAll("
                         <span class="badge badge-secondary">
                             <i class="fas fa-users"></i> <?php echo $company['user_count']; ?>
                         </span>
+                    </td>
+                    <td>
+                        <?php if ($company['plan_name']): ?>
+                            <div style="font-weight: 500;"><?php echo htmlspecialchars($company['plan_name']); ?></div>
+                            <?php if ($company['subscription_status'] === 'trial'): ?>
+                                <?php 
+                                    $daysLeft = ceil((strtotime($company['trial_ends_at']) - time()) / 86400); 
+                                    $daysLeft = max(0, $daysLeft);
+                                ?>
+                                <span class="badge badge-warning" style="font-size: 0.8em;">Trial: <?php echo $daysLeft; ?> days</span>
+                            <?php elseif ($company['subscription_status'] === 'active'): ?>
+                                <span class="badge badge-success" style="font-size: 0.8em;">Active</span>
+                            <?php else: ?>
+                                <span class="badge badge-danger" style="font-size: 0.8em;"><?php echo ucfirst($company['subscription_status']); ?></span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="badge badge-secondary">No Plan</span>
+                        <?php endif; ?>
                     </td>
                     <td><?php echo date('M j, Y', strtotime($company['created_at'])); ?></td>
                     <td>

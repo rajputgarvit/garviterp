@@ -347,9 +347,16 @@ class Auth {
             return false;
         }
         
+        $user = $this->getCurrentUser();
+        $companyId = $user['company_id'];
+
+        if (!$companyId) {
+            return false; // Should not happen for valid users
+        }
+        
         require_once 'Subscription.php';
         $subscription = new Subscription();
-        return $subscription->hasActiveSubscription($_SESSION['user_id']);
+        return $subscription->hasActiveSubscription($companyId);
     }
     /**
      * Impersonate a user (Admin only)

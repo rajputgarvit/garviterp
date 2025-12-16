@@ -4,9 +4,9 @@ require_once 'classes/Database.php';
 
 $db = Database::getInstance();
 
-echo "<h1>Table Schema: company_settings</h1>";
+echo "<h1>Table Schema: subscriptions</h1>";
 try {
-    $columns = $db->fetchAll("DESCRIBE company_settings");
+    $columns = $db->fetchAll("DESCRIBE subscriptions");
     echo "<pre>";
     print_r($columns);
     echo "</pre>";

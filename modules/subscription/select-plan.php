@@ -35,8 +35,19 @@ if (!$user || $user['email_verified'] == 0) {
     exit;
 }
 
+// Get company ID
+$companyId = null;
+if (isset($user['company_id'])) {
+    $companyId = $user['company_id'];
+} else {
+    // If pending, fetch from DB
+    $u = $db->fetchOne("SELECT company_id FROM users WHERE id = ?", [$userId]);
+    $companyId = $u['company_id'] ?? null;
+}
+
 // Get all plans
 $plans = $subscription->getPlans();
+$hasUsedTrial = $companyId ? $subscription->hasUsedTrial($companyId) : false;
 
 // Handle plan selection
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -467,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Selected: <span id="summaryPlan">None</span> (<span id="summaryCycle">Monthly</span>)
             </div>
             <button type="submit" class="continue-btn">
-                Continue to Checkout <i class="fas fa-arrow-right"></i>
+                <?php echo $hasUsedTrial ? 'Proceed to Pay' : 'Start Free Trial'; ?> <i class="fas fa-arrow-right"></i>
             </button>
         </div>
     </form>

@@ -5,37 +5,47 @@ require_once '../../classes/Auth.php';
 require_once '../../classes/Database.php';
 require_once '../../classes/Subscription.php';
 
-$auth = new Auth();
 $subscription = new Subscription();
 
-// Check if user is coming from checkout
-if (!isset($_SESSION['selected_plan'])) {
-    header('Location: ../auth/register.php');
-    exit;
-}
-
+// Check for user ID (either pending or logged in)
 $userId = $_SESSION['pending_user_id'] ?? $_SESSION['user_id'] ?? null;
 
 if (!$userId) {
-    header('Location: ../auth/register.php');
+    header('Location: select-plan.php');
     exit;
 }
 
-$planName = $_SESSION['selected_plan'];
-$billingCycle = $_SESSION['selected_billing'] ?? 'monthly';
+// Initialize DB connection to get company_id
+$db = Database::getInstance();
+$user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
+
+if (!$user) {
+    // User not found, redirect to registration or error page
+    header('Location: select-plan.php');
+    exit;
+}
+
+$companyId = $user['company_id'];
+
+$planName = $_GET['plan'] ?? '';
+$billingCycle = $_GET['billing'] ?? 'monthly';
+
+// Validate plan and billing cycle if necessary
+if (empty($planName)) {
+    header('Location: select-plan.php?error=No plan selected.');
+    exit;
+}
 
 try {
-    // Create trial subscription
-    $subscriptionId = $subscription->createSubscription($userId, $planName, $billingCycle);
+    // Create new trial subscription for COMPANY
+    $subscriptionId = $subscription->createSubscription($companyId, $planName, $billingCycle, 'trial', $userId);
     
-    // Clear session variables
+    // Clear session variables if they were used for selection
     unset($_SESSION['selected_plan']);
     unset($_SESSION['selected_billing']);
     
     // If it was a pending user (registration flow), log them in
     if (isset($_SESSION['pending_user_id'])) {
-        // Initialize DB connection here if not already done
-        $db = Database::getInstance();
 
         unset($_SESSION['pending_user_id']);
         unset($_SESSION['pending_user_email']); // Also clear pending email if it exists

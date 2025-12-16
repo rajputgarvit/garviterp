@@ -17,41 +17,51 @@ if (!isset($_SESSION['selected_plan'])) {
     exit;
 }
 
-// Check for user ID (either pending or logged in)
-$userId = $_SESSION['pending_user_id'] ?? $_SESSION['user_id'] ?? null;
+// Get Current User & Company
+$user = $auth->getCurrentUser();
+$userId = $user['id'];
+$companyId = $user['company_id'];
 
-if (!$userId) {
+if (!$companyId) {
+    die("Company ID not found. Please contact support.");
+}
+
+// Check plan details
+$planName = $_GET['plan'] ?? '';
+$billingCycle = $_GET['billing'] ?? 'monthly';
+
+// Validate Plan
+$validPlans = $subscription->getPlans();
+$planValid = false;
+$price = 0;
+
+foreach ($validPlans as $p) {
+    if ($p['plan_name'] === $planName) {
+        $planValid = true;
+        $price = ($billingCycle === 'annual') ? $p['annual_price'] : $p['monthly_price'];
+        break;
+    }
+}
+
+if (!$planValid) {
     header('Location: select-plan.php');
     exit;
 }
-$planName = $_SESSION['selected_plan'];
-$billingCycle = $_SESSION['selected_billing'] ?? 'monthly';
 
-// Get plan details
-$plan = $db->fetchOne(
-    "SELECT * FROM subscription_plans WHERE plan_name = ?",
-    [$planName]
-);
+// Check if company has used trial
+$hasUsedTrial = $subscription->hasUsedTrial($companyId);
 
-if (!$plan) {
-    header('Location: select-plan.php');
-    exit;
-}
-
-// Calculate price
-$price = ($billingCycle === 'annual') ? $plan['annual_price'] : $plan['monthly_price'];
-
-// Handle payment processing
+// Handle Payment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id'])) {
+    $paymentId = $_POST['razorpay_payment_id'];
+    $orderId = $_POST['razorpay_order_id'];
+    $signature = $_POST['razorpay_signature'];
+
     try {
-        $orderId = $_POST['razorpay_order_id'];
-        $paymentId = $_POST['razorpay_payment_id'];
-        $signature = $_POST['razorpay_signature'];
-        
-        // Verify payment signature
         if ($payment->verifyPaymentSignature($orderId, $paymentId, $signature)) {
             // Create subscription (Active immediately)
-            $subscriptionId = $subscription->createSubscription($userId, $planName, $billingCycle, 'active');
+            // Pass company_id as first arg, user_id as last arg
+            $subscriptionId = $subscription->createSubscription($companyId, $planName, $billingCycle, 'active', $userId);
             
             // Record transaction
             $payment->recordTransaction($subscriptionId, [
@@ -290,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                 </ul>
             </div>
 
-            <?php if ($subscription->hasUsedTrial($userId)): ?>
+            <?php if ($hasUsedTrial): ?>
                 <!-- Upgrading / Re-subscribing: Payment Only -->
                  <div style="background: #fffbeb; color: #92400e; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
                     <i class="fas fa-info-circle"></i>

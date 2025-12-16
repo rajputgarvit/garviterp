@@ -70,11 +70,11 @@ $users = $db->fetchAll("
            GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
     FROM users u
     LEFT JOIN (
-        SELECT user_id, plan_name, status, trial_ends_at 
+        SELECT company_id, plan_name, status, trial_ends_at 
         FROM subscriptions 
         WHERE status IN ('active', 'trial') 
         ORDER BY created_at DESC 
-    ) s ON s.user_id = u.id
+    ) s ON s.company_id = u.company_id
     LEFT JOIN user_roles ur ON u.id = ur.user_id
     LEFT JOIN roles r ON ur.role_id = r.id
     GROUP BY u.id
