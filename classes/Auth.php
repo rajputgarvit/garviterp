@@ -80,7 +80,12 @@ class Auth {
     
     public function hasRole($role) {
         if (!$this->isLoggedIn()) return false;
-        $roles = explode(',', $_SESSION['roles'] ?? '');
+        
+        $roles = $_SESSION['roles'] ?? [];
+        if (is_string($roles)) {
+            $roles = explode(',', $roles);
+        }
+        
         return in_array($role, $roles) || in_array('Super Admin', $roles);
     }
 
@@ -275,13 +280,38 @@ class Auth {
         );
         
         // Send email (simplified version - should use proper email service)
-        $verificationLink = BASE_URL . "verify-email.php?token=" . $token;
+        // Send email 
+        $verificationLink = BASE_URL . "modules/auth/verify-email.php?token=" . $token;
         $subject = "Verify your Acculynce account";
-        $message = "Click the link to verify your email: " . $verificationLink;
+        $message = "
+        <html>
+        <head>
+            <style>
+                body { font-family: 'Inter', sans-serif; color: #333; line-height: 1.6; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
+                .btn { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
+                .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <h2>Verify your email address</h2>
+                <p>Thanks for getting started with " . APP_NAME . "! We want to make sure it's really you.</p>
+                <p>Please click the button below to verify your email address.</p>
+                <a href='$verificationLink' class='btn'>Verify Email Address</a>
+                <p style='margin-top: 20px; font-size: 13px; color: #666;'>If you didn't create an account, you can safely ignore this email.</p>
+                <div class='footer'>
+                    &copy; " . date('Y') . " " . APP_NAME . ". All rights reserved.
+                </div>
+            </div>
+        </body>
+        </html>
+        ";
         
-        // In production, use proper email service
-        // For now, just return the link
-        return ['success' => true, 'link' => $verificationLink];
+        // Use Mail class
+        require_once __DIR__ . '/Mail.php';
+        $mail = new Mail();
+        return $mail->send($email, $subject, $message, true);
     }
     
     /**

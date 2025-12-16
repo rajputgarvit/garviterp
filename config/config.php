@@ -85,6 +85,15 @@ define('CONFIG_PATH', ROOT_PATH . '/config');
 define('PUBLIC_PATH', ROOT_PATH . '/public');
 define('ASSETS_PATH', PUBLIC_PATH . '/assets');
 
+// SMTP Configuration
+define('SMTP_HOST', 'mail.acculynce.com');
+define('SMTP_PORT', 465);
+define('SMTP_USER', 'accounts@acculynce.com');
+define('SMTP_PASS', 'Garvit223@');
+define('SMTP_SECURE', 'ssl'); // ssl or tls
+define('SMTP_FROM_EMAIL', 'accounts@acculynce.com');
+define('SMTP_FROM_NAME', 'Acculynce Accounts');
+
 // Helper function to get module path
 function module_path($module, $file = '') {
     return MODULES_PATH . '/' . $module . ($file ? '/' . $file : '');

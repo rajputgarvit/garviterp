@@ -15,13 +15,16 @@ if (!$companyId) {
 // Handle Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_company'])) {
     $db->update('company_settings', [
-        'company_name' => $_POST['company_name'],
-        'company_address' => $_POST['company_address'],
-        'company_phone' => $_POST['company_phone'],
-        'company_email' => $_POST['company_email'],
-        'gst_number' => $_POST['gst_number']
+        'company_name' => $_POST['company_name'] ?? '',
+        'address_line1' => $_POST['address_line1'] ?? '',
+        'phone' => $_POST['phone'] ?? '',
+        'email' => $_POST['email'] ?? '',
+        'gstin' => $_POST['gstin'] ?? ''
     ], 'id = ?', [$companyId]);
     $success = "Company details updated successfully.";
+    
+    // Refresh company data
+    $company = $db->fetchOne("SELECT * FROM company_settings WHERE id = ?", [$companyId]);
 }
 
 // Fetch Company Details
@@ -66,22 +69,22 @@ $users = $db->fetchAll("
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label>GST Number</label>
-                    <input type="text" name="gst_number" class="form-control" value="<?php echo htmlspecialchars($company['gst_number'] ?? ''); ?>">
+                    <input type="text" name="gstin" class="form-control" value="<?php echo htmlspecialchars($company['gstin'] ?? ''); ?>">
                 </div>
             </div>
             <div class="form-row" style="display: flex; gap: 20px; margin-bottom: 15px;">
                 <div class="form-group" style="flex: 1;">
                     <label>Email</label>
-                    <input type="email" name="company_email" class="form-control" value="<?php echo htmlspecialchars($company['company_email'] ?? ''); ?>">
+                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($company['email'] ?? ''); ?>">
                 </div>
                 <div class="form-group" style="flex: 1;">
                     <label>Phone</label>
-                    <input type="text" name="company_phone" class="form-control" value="<?php echo htmlspecialchars($company['company_phone'] ?? ''); ?>">
+                    <input type="text" name="phone" class="form-control" value="<?php echo htmlspecialchars($company['phone'] ?? ''); ?>">
                 </div>
             </div>
             <div class="form-group" style="margin-bottom: 15px;">
                 <label>Address</label>
-                <textarea name="company_address" class="form-control" rows="3"><?php echo htmlspecialchars($company['company_address'] ?? ''); ?></textarea>
+                <textarea name="address_line1" class="form-control" rows="3"><?php echo htmlspecialchars($company['address_line1'] ?? ''); ?></textarea>
             </div>
             <button type="submit" class="btn btn-primary">Save Changes</button>
         </form>

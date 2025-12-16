@@ -64,9 +64,17 @@ $db = Database::getInstance();
 // Fetch Users with Roles
 $users = $db->fetchAll("
     SELECT u.*, 
-           (SELECT COUNT(*) FROM subscriptions s WHERE s.user_id = u.id AND s.status = 'active') as has_active_sub,
+           s.plan_name,
+           s.status as subscription_status,
+           s.trial_ends_at,
            GROUP_CONCAT(r.name SEPARATOR ', ') as role_names
     FROM users u
+    LEFT JOIN (
+        SELECT user_id, plan_name, status, trial_ends_at 
+        FROM subscriptions 
+        WHERE status IN ('active', 'trial') 
+        ORDER BY created_at DESC 
+    ) s ON s.user_id = u.id
     LEFT JOIN user_roles ur ON u.id = ur.user_id
     LEFT JOIN roles r ON ur.role_id = r.id
     GROUP BY u.id
@@ -113,8 +121,17 @@ $userIds = array_column($users, 'id');
                         <div style="font-size: 12px; color: var(--text-secondary);"><?php echo htmlspecialchars($user['phone'] ?? ''); ?></div>
                     </td>
                     <td>
-                        <?php if ($user['has_active_sub']): ?>
-                            <span class="badge badge-success">Active</span>
+                        <?php if ($user['plan_name']): ?>
+                            <div style="font-weight: 500;"><?php echo htmlspecialchars($user['plan_name']); ?></div>
+                            <?php if ($user['subscription_status'] === 'trial'): ?>
+                                <?php 
+                                    $daysLeft = ceil((strtotime($user['trial_ends_at']) - time()) / 86400); 
+                                    $daysLeft = max(0, $daysLeft);
+                                ?>
+                                <span class="badge badge-warning" style="font-size: 0.7em;">Trial: <?php echo $daysLeft; ?> days left</span>
+                            <?php else: ?>
+                                <span class="badge badge-success" style="font-size: 0.7em;">Active</span>
+                            <?php endif; ?>
                         <?php else: ?>
                             <span class="badge badge-secondary">No Subscription</span>
                         <?php endif; ?>

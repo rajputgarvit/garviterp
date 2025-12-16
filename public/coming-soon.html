@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coming Soon - Acculynce</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #000000;
+            --accent: #2563eb;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #f3f4f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.1) 0px, transparent 50%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 800px;
+            width: 100%;
+            z-index: 10;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .logo-container {
+            margin-bottom: 2.5rem;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .logo {
+            height: 80px;
+            width: auto;
+            max-width: 100%;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        p.subtitle {
+            font-size: 1.25rem;
+            color: var(--text-light);
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .loader {
+            width: 60px;
+            height: 4px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+            margin: 0 auto 3rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loader::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 30%;
+            background: var(--primary);
+            border-radius: 4px;
+            animation: loading 1.5s infinite ease-in-out;
+        }
+
+        footer {
+            position: absolute;
+            bottom: 2rem;
+            color: var(--text-light);
+            font-size: 0.875rem;
+            width: 100%;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes loading {
+            0% { left: -30%; }
+            50% { left: 100%; }
+            100% { left: 100%; }
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            .logo {
+                height: 60px;
+            }
+            p.subtitle {
+                font-size: 1.1rem;
+                padding: 0 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="logo-container">
+            <!-- Using relative path assuming file exists locally, otherwise fallback to provided URL -->
+            <img src="uploads/logos/logo_1_1765731868.svg" alt="Acculynce Logo" class="logo" onerror="this.src='https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg'">
+        </div>
+        
+        <h1>We Are Launching Soon</h1>
+        <p class="subtitle">
+            We're building something extraordinary to revolutionize your business management. 
+            Stay tuned for the ultimate experience.
+        </p>
+
+        <div class="loader"></div>
+    </div>
+
+    <footer>
+        &copy; 2025 Acculynce. All rights reserved.
+    </footer>
+
+</body>
+</html>

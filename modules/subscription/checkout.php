@@ -12,12 +12,18 @@ $subscription = new Subscription();
 $payment = new Payment();
 
 // Check if plan is selected
-if (!isset($_SESSION['selected_plan']) || !isset($_SESSION['pending_user_id'])) {
+if (!isset($_SESSION['selected_plan'])) {
     header('Location: select-plan.php');
     exit;
 }
 
-$userId = $_SESSION['pending_user_id'];
+// Check for user ID (either pending or logged in)
+$userId = $_SESSION['pending_user_id'] ?? $_SESSION['user_id'] ?? null;
+
+if (!$userId) {
+    header('Location: select-plan.php');
+    exit;
+}
 $planName = $_SESSION['selected_plan'];
 $billingCycle = $_SESSION['selected_billing'] ?? 'monthly';
 
@@ -44,8 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
         
         // Verify payment signature
         if ($payment->verifyPaymentSignature($orderId, $paymentId, $signature)) {
-            // Create subscription
-            $subscriptionId = $subscription->createSubscription($userId, $planName, $billingCycle);
+            // Create subscription (Active immediately)
+            $subscriptionId = $subscription->createSubscription($userId, $planName, $billingCycle, 'active');
             
             // Record transaction
             $payment->recordTransaction($subscriptionId, [
@@ -57,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                 'method' => $_POST['payment_method'] ?? 'razorpay'
             ]);
             
-            // Activate subscription
+            // Activate subscription (already active but updates razorpay/dates if needed)
             $subscription->activateSubscription($subscriptionId);
             
-            // Clear session
+            // Clear session variables but keep user_id if logged in
             unset($_SESSION['pending_user_id']);
             unset($_SESSION['selected_plan']);
             unset($_SESSION['selected_billing']);
@@ -284,10 +290,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                 </ul>
             </div>
 
-            <button class="btn btn-trial" onclick="startTrial()">
-                <i class="fas fa-rocket"></i>
-                Start Free Trial
-            </button>
+            <?php if ($subscription->hasUsedTrial($userId)): ?>
+                <!-- Upgrading / Re-subscribing: Payment Only -->
+                 <div style="background: #fffbeb; color: #92400e; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
+                    <i class="fas fa-info-circle"></i>
+                    You have already used your free trial. Please proceed to payment.
+                </div>
+                <button class="btn" onclick="initiatePayment()">
+                    <i class="fas fa-lock"></i>
+                    Pay ₹<?php echo number_format($price, 2); ?>
+                </button>
+            <?php else: ?>
+                <!-- New User: Free Trial -->
+                <button class="btn btn-trial" onclick="startTrial()">
+                    <i class="fas fa-rocket"></i>
+                    Start Free Trial
+                </button>
+            <?php endif; ?>
 
             <div class="security-note">
                 <i class="fas fa-lock"></i>
@@ -307,27 +326,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                 <span>Billing Cycle</span>
                 <span><?php echo ucfirst($billingCycle); ?></span>
             </div>
-
+            
+            <?php if (!$subscription->hasUsedTrial($userId)): ?>
             <div class="summary-row">
                 <span>Trial Period</span>
                 <span>14 Days</span>
             </div>
+            <?php endif; ?>
 
             <div class="order-summary">
                 <div class="summary-row">
                     <span>Due Today</span>
-                    <span style="color: #10b981; font-weight: 600;">₹0.00</span>
+                    <?php if ($subscription->hasUsedTrial($userId)): ?>
+                        <span style="font-weight: 600; color: #1f2937;">₹<?php echo number_format($price, 2); ?></span>
+                    <?php else: ?>
+                        <span style="color: #10b981; font-weight: 600;">₹0.00</span>
+                    <?php endif; ?>
                 </div>
 
+                <?php if (!$subscription->hasUsedTrial($userId)): ?>
                 <div class="summary-row total">
                     <span>Due After Trial</span>
                     <span>₹<?php echo number_format($price, 2); ?></span>
                 </div>
+                <?php endif; ?>
             </div>
 
             <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #1e40af;">
                 <i class="fas fa-info-circle"></i>
-                You won't be charged until your trial ends. Cancel anytime.
+                <?php if ($subscription->hasUsedTrial($userId)): ?>
+                    Secure payment processed by Razorpay.
+                <?php else: ?>
+                    You won't be charged until your trial ends. Cancel anytime.
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -341,12 +372,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
 
     <script>
         function startTrial() {
-            // For trial, we don't need payment
-            // Just create subscription directly
             window.location.href = 'create-trial-subscription.php';
         }
 
-        // Razorpay payment (for future use when trial ends)
+        // Razorpay payment
         function initiatePayment() {
             var options = {
                 "key": "<?php echo $payment->getRazorpayKey(); ?>",
@@ -361,13 +390,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                     document.getElementById('paymentForm').submit();
                 },
                 "prefill": {
-                    "email": "<?php echo $_SESSION['pending_user_email'] ?? ''; ?>"
+                    "email": "<?php echo $_SESSION['pending_user_email'] ?? $_SESSION['email'] ?? ''; ?>"
                 },
                 "theme": {
                     "color": "#667eea"
                 }
             };
             var rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (response){
+                alert("Payment Failed: " + response.error.description);
+            });
             rzp.open();
         }
     </script>

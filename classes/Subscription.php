@@ -11,7 +11,7 @@ class Subscription {
     /**
      * Create a new subscription for a user
      */
-    public function createSubscription($userId, $planName, $billingCycle = 'monthly') {
+    public function createSubscription($userId, $planName, $billingCycle = 'monthly', $status = 'trial') {
         // Get plan details
         $plan = $this->db->fetchOne(
             "SELECT * FROM subscription_plans WHERE plan_name = ? AND is_active = 1",
@@ -25,9 +25,15 @@ class Subscription {
         // Calculate price based on billing cycle
         $price = ($billingCycle === 'annual') ? $plan['annual_price'] : $plan['monthly_price'];
 
-        // Set trial period (14 days from now)
-        $trialEndsAt = date('Y-m-d H:i:s', strtotime('+14 days'));
-        $currentPeriodStart = date('Y-m-d H:i:s');
+        // Determine dates based on status
+        if ($status === 'trial') {
+            $trialEndsAt = date('Y-m-d H:i:s', strtotime('+14 days'));
+            $currentPeriodStart = date('Y-m-d H:i:s');
+        } else {
+            $trialEndsAt = null;
+            $currentPeriodStart = date('Y-m-d H:i:s');
+        }
+        
         $currentPeriodEnd = ($billingCycle === 'annual') 
             ? date('Y-m-d H:i:s', strtotime('+1 year'))
             : date('Y-m-d H:i:s', strtotime('+1 month'));
@@ -38,7 +44,7 @@ class Subscription {
             'plan_name' => $planName,
             'plan_price' => $price,
             'billing_cycle' => $billingCycle,
-            'status' => 'trial',
+            'status' => $status,
             'trial_ends_at' => $trialEndsAt,
             'current_period_start' => $currentPeriodStart,
             'current_period_end' => $currentPeriodEnd
@@ -105,6 +111,17 @@ class Subscription {
         $trialEnds = strtotime($subscription['trial_ends_at']);
 
         return $now < $trialEnds;
+    }
+
+    /**
+     * Check if user has used their trial (any previous subscription)
+     */
+    public function hasUsedTrial($userId) {
+        $result = $this->db->fetchOne(
+            "SELECT COUNT(*) as count FROM subscriptions WHERE user_id = ?",
+            [$userId]
+        );
+        return ($result['count'] ?? 0) > 0;
     }
 
     /**

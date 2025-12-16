@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['pending_user_id'] = $result['user_id'];
             $_SESSION['pending_user_email'] = $email;
             
-            // Redirect to plan selection
-            header('Location: ../subscription/select-plan.php');
+            // Redirect to verification pending
+            header('Location: verification-pending.php');
             exit;
         } else {
             $error = $result['message'];

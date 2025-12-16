@@ -23,6 +23,18 @@ if (!$userId) {
     exit;
 }
 
+// Check verification status
+$user = $db->fetchOne("SELECT email_verified FROM users WHERE id = ?", [$userId]);
+if (!$user || $user['email_verified'] == 0) {
+    // Determine email for session if missing
+    if (!isset($_SESSION['pending_user_email'])) {
+        $userData = $db->fetchOne("SELECT email FROM users WHERE id = ?", [$userId]);
+        if ($userData) $_SESSION['pending_user_email'] = $userData['email'];
+    }
+    header('Location: ../auth/verification-pending.php');
+    exit;
+}
+
 // Get all plans
 $plans = $subscription->getPlans();
 

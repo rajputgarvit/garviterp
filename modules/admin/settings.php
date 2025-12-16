@@ -9,13 +9,23 @@ $db = Database::getInstance();
 // Handle Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['toggle_maintenance'])) {
-        $currentStatus = $db->fetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'")['setting_value'];
+        $setting = $db->fetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'");
+        $currentStatus = $setting ? $setting['setting_value'] : '0';
         $newStatus = ($currentStatus == '1') ? '0' : '1';
         
-        $db->update('system_settings', 
-            ['setting_value' => $newStatus], 
-            "setting_key = 'maintenance_mode'"
-        );
+        if ($setting) {
+            $db->update('system_settings', 
+                ['setting_value' => $newStatus], 
+                "setting_key = 'maintenance_mode'"
+            );
+        } else {
+            $db->insert('system_settings', [
+                'setting_key' => 'maintenance_mode',
+                'setting_value' => $newStatus,
+                'category' => 'system',
+                'description' => 'Maintenance Mode status'
+            ]);
+        }
         
         $success = ($newStatus == '1') ? "Maintenance mode enabled." : "Maintenance mode disabled.";
     }
@@ -25,7 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $phpVersion = phpversion();
 $dbVersion = $db->fetchOne("SELECT VERSION() as version")['version'];
 $serverSoftware = $_SERVER['SERVER_SOFTWARE'];
-$maintenanceMode = ($db->fetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'")['setting_value'] == '1');
+$setting = $db->fetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'");
+$maintenanceMode = ($setting && $setting['setting_value'] == '1');
 
 // Disk Usage
 $diskTotal = disk_total_space("/");

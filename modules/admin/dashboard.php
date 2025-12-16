@@ -11,7 +11,7 @@ $user = $auth->getCurrentUser();
 // Fetch stats
 $db = Database::getInstance();
 $totalUsers = $db->fetchOne("SELECT COUNT(*) as count FROM users")['count'];
-$activeSubs = $db->fetchOne("SELECT COUNT(*) as count FROM subscriptions WHERE status = 'active'")['count'];
+$activeSubs = $db->fetchOne("SELECT COUNT(*) as count FROM subscriptions WHERE status IN ('active', 'trial')")['count'];
 $totalRevenue = $db->fetchOne("SELECT SUM(amount) as total FROM payment_transactions WHERE status = 'success'")['total'] ?? 0;
 $recentUsers = $db->fetchAll("SELECT * FROM users ORDER BY created_at DESC LIMIT 5");
 // Calculate MRR and ARR

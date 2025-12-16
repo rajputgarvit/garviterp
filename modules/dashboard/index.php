@@ -11,6 +11,14 @@ $db = Database::getInstance();
 $user = $auth->getCurrentUser();
 $companyId = $user['company_id'];
 
+// Check subscription status
+require_once '../../classes/Subscription.php';
+$subscription = new Subscription();
+if (!$subscription->hasActiveSubscription($user['id'])) {
+    header('Location: ../subscription/subscription-expired.php');
+    exit;
+}
+
 // Check if company exists for Super Admin, if not redirect to setup
 if ($auth->hasRole('Super Admin')) {
     $companyExists = false;
@@ -74,6 +82,24 @@ $recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.inv
             <?php include INCLUDES_PATH . '/header.php'; ?>
             
             <div class="content-area">
+                <!-- Subscription Banner -->
+                <?php
+                require_once '../../classes/Subscription.php';
+                $subscription = new Subscription();
+                $subStats = $subscription->getSubscriptionStats($user['id']);
+                
+                if ($subStats && $subStats['is_trial']):
+                    $daysLeft = $subStats['days_remaining'];
+                    $bannerClass = $daysLeft <= 3 ? 'alert-danger' : 'alert-info';
+                ?>
+                    <div class="alert <?php echo $bannerClass; ?>" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <i class="fas fa-clock"></i>
+                            <strong>Free Trial Active:</strong> You have <?php echo $daysLeft; ?> days remaining in your trial.
+                        </div>
+                        <a href="<?php echo MODULES_URL; ?>/subscription/checkout.php?upgrade=1" class="btn btn-sm btn-primary">Upgrade Now</a>
+                    </div>
+                <?php endif; ?>
                 <!-- Statistics Cards -->
                 <div class="stats-grid">
                     <div class="stat-card">
