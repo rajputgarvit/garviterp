@@ -120,6 +120,12 @@ class Subscription {
             return true;
         }
 
+        if ($subscription['status'] === 'trial') {
+            $now = time();
+            $trialEnds = strtotime($subscription['trial_ends_at']);
+            return $now < $trialEnds;
+        }
+
         // Check if subscription is active and not expired
         if ($subscription['status'] === 'active') {
             $now = time();
