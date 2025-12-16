@@ -39,6 +39,7 @@ $price = 0;
 foreach ($validPlans as $p) {
     if ($p['plan_name'] === $planName) {
         $planValid = true;
+        $plan = $p;
         $price = ($billingCycle === 'annual') ? $p['annual_price'] : $p['monthly_price'];
         break;
     }
