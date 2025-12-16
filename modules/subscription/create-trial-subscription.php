@@ -50,18 +50,23 @@ try {
         unset($_SESSION['pending_user_id']);
         unset($_SESSION['pending_user_email']); // Also clear pending email if it exists
         
-        $user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
-        if ($user) { // Ensure user is found before setting session
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['email'] = $user['email'];
-            $_SESSION['company_id'] = $user['company_id'];
-            
-            // Fetch roles
-            $roles = $db->fetchAll("SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?", [$userId]);
-            $_SESSION['roles'] = array_column($roles, 'name');
-        }
+            $user = $db->fetchOne("
+                SELECT u.*, GROUP_CONCAT(r.name) as roles 
+                FROM users u 
+                LEFT JOIN user_roles ur ON u.id = ur.user_id 
+                LEFT JOIN roles r ON ur.role_id = r.id 
+                WHERE u.id = ?
+                GROUP BY u.id
+            ", [$userId]);
+
+            if ($user) { // Ensure user is found before setting session
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['email'] = $user['email'];
+                $_SESSION['company_id'] = $user['company_id'];
+                $_SESSION['roles'] = $user['roles']; // Now a comma-separated string
+            }
         
         // Redirect to onboarding
         header('Location: ../auth/onboarding.php');
