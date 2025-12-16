@@ -12,7 +12,8 @@ $subscription = new Subscription();
 $payment = new Payment();
 
 // Check if plan is selected
-if (!isset($_SESSION['selected_plan'])) {
+// Check if plan is selected
+if (!isset($_SESSION['selected_plan']) && !isset($_GET['plan'])) {
     header('Location: select-plan.php');
     exit;
 }

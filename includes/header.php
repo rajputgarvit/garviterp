@@ -37,4 +37,31 @@ if (!$isSpaRequest):
         </div>
     </div>
 </header>
+
+<?php
+// Subscription Banner Logic
+if (isset($user['company_id'])) {
+    if (!class_exists('Subscription')) {
+        require_once CLASSES_PATH . '/Subscription.php';
+    }
+    $subscriptionHeader = new Subscription();
+    $subStatsHeader = $subscriptionHeader->getSubscriptionStats($user['company_id']);
+    
+    if ($subStatsHeader && $subStatsHeader['is_trial']):
+        $daysLeft = $subStatsHeader['days_remaining'];
+        $bannerClass = $daysLeft <= 3 ? 'alert-danger' : 'alert-info';
+?>
+    <div class="alert <?php echo $bannerClass; ?>" style="margin: 10px 20px 0 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-clock" style="font-size: 1.2em;"></i>
+            <div>
+                <strong>Free Trial Active</strong>
+                <div style="font-size: 0.9em;">You have <?php echo $daysLeft; ?> days remaining in your trial.</div>
+            </div>
+        </div>
+        <a href="<?php echo MODULES_URL; ?>/subscription/select-plan.php" class="btn btn-sm btn-primary" style="white-space: nowrap;">Upgrade Now</a>
+    </div>
+<?php endif; 
+} 
+?>
 <?php endif; ?>
