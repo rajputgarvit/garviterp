@@ -97,5 +97,21 @@ if ($auth->isLoggedIn()) {
 
         <a href="login.php" class="resend-link">Back to Login</a>
     </div>
+
+    <script>
+        function checkVerification() {
+            fetch('../../ajax/check_verification_status.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.verified) {
+                        window.location.href = '../subscription/select-plan.php';
+                    }
+                })
+                .catch(err => console.error('Verification check failed', err));
+        }
+
+        // Check every 3 seconds
+        setInterval(checkVerification, 3000);
+    </script>
 </body>
 </html>
