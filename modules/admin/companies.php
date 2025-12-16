@@ -96,6 +96,7 @@ $companies = $db->fetchAll("
                     <th>Company Name</th>
                     <th>Owner</th>
                     <th>Users</th>
+                    <th>Plan Type</th>
                     <th>Joined Date</th>
                     <th>Actions</th>
                 </tr>
