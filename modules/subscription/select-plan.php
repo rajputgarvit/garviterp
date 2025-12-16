@@ -59,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['selected_billing'] = $billingCycle;
     
     // Redirect to checkout
-    header('Location: checkout.php');
+    // Redirect to checkout
+    header("Location: checkout.php?plan=" . urlencode($planName) . "&billing=" . urlencode($billingCycle));
     exit;
 }
 ?>

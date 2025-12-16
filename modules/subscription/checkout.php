@@ -27,8 +27,9 @@ if (!$companyId) {
 }
 
 // Check plan details
-$planName = $_GET['plan'] ?? '';
-$billingCycle = $_GET['billing'] ?? 'monthly';
+// Check plan details
+$planName = $_GET['plan'] ?? $_SESSION['selected_plan'] ?? '';
+$billingCycle = $_GET['billing'] ?? $_SESSION['selected_billing'] ?? 'monthly';
 
 // Validate Plan
 $validPlans = $subscription->getPlans();
@@ -382,7 +383,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
 
     <script>
         function startTrial() {
-            window.location.href = 'create-trial-subscription.php';
+            const plan = "<?php echo urlencode($planName); ?>";
+            const billing = "<?php echo urlencode($billingCycle); ?>";
+            window.location.href = 'create-trial-subscription.php?plan=' + plan + '&billing=' + billing;
         }
 
         // Razorpay payment
