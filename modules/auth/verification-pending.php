@@ -79,7 +79,28 @@ if ($auth->isLoggedIn()) {
             font-size: 14px;
             text-decoration: none;
         }
-        .resend-link:hover { color: #2563eb; }
+    .resend-link:hover { color: #2563eb; }
+        .loader-container {
+            margin-top: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -93,6 +114,17 @@ if ($auth->isLoggedIn()) {
         
         <div style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">
             Can't find it? Check your spam folder.
+        </div>
+
+        <div class="loader-container">
+            <div class="spinner"></div>
+            <span>Checking verification status automatically...</span>
+        </div>
+
+        <div id="resend-container" style="margin-top: 20px; font-size: 14px; color: #64748b; min-height: 24px;">
+            <span id="timer-text">Resend link in <span id="timer" style="font-weight: 600; color: #2563eb;">60</span>s</span>
+            <a href="#" id="resend-btn" style="display: none; color: #2563eb; text-decoration: none; font-weight: 500;">Resend Verification Link</a>
+            <span id="resend-message" style="display: none;"></span>
         </div>
 
         <a href="login.php" class="resend-link">Back to Login</a>
@@ -112,6 +144,47 @@ if ($auth->isLoggedIn()) {
 
         // Check every 3 seconds
         setInterval(checkVerification, 3000);
+
+        // Resend Timer Logic
+        let timeLeft = 60;
+        const timerElement = document.getElementById('timer');
+        const resendContainer = document.getElementById('resend-container');
+        const timerText = document.getElementById('timer-text');
+        const resendBtn = document.getElementById('resend-btn');
+        const resendMessage = document.getElementById('resend-message');
+
+        const countdown = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                timerText.style.display = 'none';
+                resendBtn.style.display = 'inline-block';
+            }
+        }, 1000);
+
+        resendBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            resendBtn.style.pointerEvents = 'none';
+            resendBtn.textContent = 'Sending...';
+
+            fetch('../../ajax/resend_verification.php', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                resendBtn.style.display = 'none';
+                resendMessage.style.display = 'block';
+                resendMessage.textContent = data.message;
+                resendMessage.style.color = data.success ? '#10b981' : '#ef4444';
+            })
+            .catch(err => {
+                resendBtn.textContent = 'Resend Link';
+                resendBtn.style.pointerEvents = 'auto';
+                alert('An error occurred. Please try again.');
+            });
+        });
     </script>
 </body>
 </html>
