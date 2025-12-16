@@ -209,8 +209,8 @@ class Subscription {
     /**
      * Get subscription statistics
      */
-    public function getSubscriptionStats($userId) {
-        $subscription = $this->getSubscription($userId);
+    public function getSubscriptionStats($companyId) {
+        $subscription = $this->getSubscription($companyId);
         
         if (!$subscription) {
             return null;
@@ -225,8 +225,8 @@ class Subscription {
             'storage_gb' => $subscription['storage_gb'],
             'trial_ends_at' => $subscription['trial_ends_at'],
             'current_period_end' => $subscription['current_period_end'],
-            'is_trial' => $this->isTrialActive($userId),
-            'is_active' => $this->hasActiveSubscription($userId)
+            'is_trial' => $this->isTrialActive($companyId),
+            'is_active' => $this->hasActiveSubscription($companyId)
         ];
 
         // Calculate days remaining

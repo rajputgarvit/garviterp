@@ -14,7 +14,7 @@ $companyId = $user['company_id'];
 // Check subscription status
 require_once '../../classes/Subscription.php';
 $subscription = new Subscription();
-if (!$subscription->hasActiveSubscription($user['id'])) {
+if (!$subscription->hasActiveSubscription($user['company_id'])) {
     header('Location: ../subscription/subscription-expired.php');
     exit;
 }
@@ -86,7 +86,7 @@ $recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.inv
                 <?php
                 require_once '../../classes/Subscription.php';
                 $subscription = new Subscription();
-                $subStats = $subscription->getSubscriptionStats($user['id']);
+                $subStats = $subscription->getSubscriptionStats($user['company_id']);
                 
                 if ($subStats && $subStats['is_trial']):
                     $daysLeft = $subStats['days_remaining'];
