@@ -170,16 +170,21 @@ class Subscription {
         $cycle = $billingCycle ?? $subscription['billing_cycle'];
         $price = ($cycle === 'annual') ? $plan['annual_price'] : $plan['monthly_price'];
 
-        return $this->db->update('subscriptions',
-            [
-                'plan_name' => $newPlanName,
-                'plan_price' => $price,
-                'billing_cycle' => $cycle,
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            'id = ?',
-            [$subscriptionId]
-        );
+        return $this->db->insert('subscriptions', [
+            'company_id' => $subscription['company_id'],
+            'user_id' => $subscription['user_id'],
+            'plan_name' => $newPlanName,
+            'plan_price' => $price,
+            'billing_cycle' => $cycle,
+            'status' => 'active', // Assuming immediate activation on change
+            'trial_ends_at' => null,
+            'current_period_start' => date('Y-m-d H:i:s'),
+            'current_period_end' => ($cycle === 'annual') 
+                ? date('Y-m-d H:i:s', strtotime('+1 year'))
+                : date('Y-m-d H:i:s', strtotime('+1 month')),
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
     }
 
     /**
@@ -242,4 +247,63 @@ class Subscription {
 
         return $stats;
     }
+
+    /**
+     * Assign a manual subscription (Admin Override)
+     */
+    public function assignManualSubscription($companyId, $planName, $startDate, $endDate) {
+        $plan = $this->db->fetchOne(
+            "SELECT * FROM subscription_plans WHERE plan_name = ?",
+            [$planName]
+        );
+
+        if (!$plan) {
+            throw new Exception("Invalid subscription plan");
+        }
+
+        // Fetch company owner
+        $owner = $this->db->fetchOne(
+            "SELECT id FROM users WHERE company_id = ? ORDER BY created_at ASC LIMIT 1",
+            [$companyId]
+        );
+
+        // Always insert a new record to preserve history
+        return $this->db->insert('subscriptions', [
+            'company_id' => $companyId,
+            'user_id' => $owner['id'] ?? null,
+            'plan_name' => $planName,
+            'plan_price' => 0.00,
+            'billing_cycle' => 'monthly',
+            'status' => 'active',
+            'current_period_start' => $startDate,
+            'current_period_end' => $endDate,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+    }
+
+    /**
+     * Cancel a subscription (Admin Override)
+     */
+    public function cancelSubscription($companyId) {
+        $existing = $this->db->fetchOne(
+            "SELECT id FROM subscriptions WHERE company_id = ? ORDER BY id DESC LIMIT 1",
+            [$companyId]
+        );
+
+        if (!$existing) {
+            throw new Exception("No subscription found for this company");
+        }
+
+        return $this->db->update('subscriptions',
+            [
+                'status' => 'cancelled',
+                'current_period_end' => date('Y-m-d H:i:s'), // Immediate cancellation
+                'updated_at' => date('Y-m-d H:i:s')
+            ],
+            'id = ?',
+            [$existing['id']]
+        );
+    }
 }
+
