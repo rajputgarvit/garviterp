@@ -169,6 +169,12 @@ $users = $db->fetchAll("
     }
 </style>
 
+<?php if (isset($success)): ?>
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> <?php echo $success; ?>
+    </div>
+<?php endif; ?>
+
 <div class="company-header">
     <div>
         <h2 style="margin: 0 0 10px 0;"><?php echo htmlspecialchars($company['company_name']); ?></h2>
@@ -194,7 +200,10 @@ $users = $db->fetchAll("
             <div style="color: #666;">Plan: <strong><?php echo htmlspecialchars($subscription['plan_name']); ?></strong></div>
             <div style="color: #888; font-size: 0.9em;">Valid until: <?php echo date('d M Y', strtotime($subscription['current_period_end'] ?? $subscription['trial_ends_at'])); ?></div>
         <?php endif; ?>
-        <div style="margin-top: 15px;">
+        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+            <a href="<?php echo MODULES_URL; ?>/auth/impersonate.php?company_id=<?php echo $companyId; ?>" class="btn btn-sm btn-warning text-dark" onclick="return confirm('Are you sure you want to login as this company?');">
+                <i class="fas fa-user-secret"></i> Login as Company
+            </a>
             <button onclick="document.getElementById('editCompanyModal').style.display='block'" class="btn btn-sm btn-secondary">
                 <i class="fas fa-edit"></i> Edit Details
             </button>
@@ -202,11 +211,7 @@ $users = $db->fetchAll("
     </div>
 </div>
 
-<?php if (isset($success)): ?>
-    <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i> <?php echo $success; ?>
-    </div>
-<?php endif; ?>
+
 
 <div class="dashboard-grid">
     <!-- HR Management -->

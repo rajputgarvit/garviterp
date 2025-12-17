@@ -26,6 +26,7 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> - <?php echo APP_NAME; ?> Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/assets/css/style.css?v=<?php echo time(); ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -165,6 +166,11 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                     <a href="<?php echo MODULES_URL; ?>/admin/audit-logs.php" class="menu-item <?php echo ($currentPage === 'audit-logs') ? 'active' : ''; ?>">
                         <i class="fas fa-history"></i>
                         <span>Audit Logs</span>
+                    </a>
+
+                    <a href="<?php echo MODULES_URL; ?>/admin/broadcasts.php" class="menu-item <?php echo ($currentPage === 'broadcasts') ? 'active' : ''; ?>">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Broadcasts</span>
                     </a>
 
                     <a href="<?php echo MODULES_URL; ?>/admin/settings.php" class="menu-item <?php echo ($currentPage === 'settings') ? 'active' : ''; ?>">

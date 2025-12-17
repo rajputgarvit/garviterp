@@ -218,6 +218,18 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
                 <?php endif; ?>
 
                 <?php if ($canViewSettings): ?>
+                <a href="<?php echo MODULES_URL; ?>/settings/roles.php" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/settings/roles') !== false ? 'active' : ''; ?>" title="Roles & Permissions">
+                    <i class="fas fa-user-shield"></i>
+                    <span>Roles & Permissions</span>
+                </a>
+                <a href="<?php echo MODULES_URL; ?>/settings/audit_logs.php" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/settings/audit_logs.php') !== false ? 'active' : ''; ?>" title="Audit Logs">
+                    <i class="fas fa-history"></i>
+                    <span>Audit Logs</span>
+                </a>
+                 <a href="<?php echo MODULES_URL; ?>/settings/export_data.php" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/settings/export_data.php') !== false ? 'active' : ''; ?>" title="Data Export">
+                    <i class="fas fa-file-export"></i>
+                    <span>Data Export</span>
+                </a>
                 <a href="<?php echo MODULES_URL; ?>/settings/index" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/settings/index.php') !== false ? 'active' : ''; ?>" title="System Settings">
                     <i class="fas fa-cog"></i>
                     <span>System Settings</span>
