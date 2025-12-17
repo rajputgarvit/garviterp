@@ -158,14 +158,19 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                 <div class="menu-section">
                     <div class="menu-section-title">System</div>
                     
-                    <a href="<?php echo MODULES_URL; ?>/admin/roles.php" class="menu-item <?php echo ($currentPage === 'roles') ? 'active' : ''; ?>">
+                    <a href="<?php echo MODULES_URL; ?>/settings/roles.php" class="menu-item <?php echo ($currentPage === 'roles') ? 'active' : ''; ?>">
                         <i class="fas fa-user-tag"></i>
                         <span>Roles & Permissions</span>
                     </a>
 
-                    <a href="<?php echo MODULES_URL; ?>/admin/audit-logs.php" class="menu-item <?php echo ($currentPage === 'audit-logs') ? 'active' : ''; ?>">
+                    <a href="<?php echo MODULES_URL; ?>/settings/audit_logs.php" class="menu-item <?php echo ($currentPage === 'audit_logs') ? 'active' : ''; ?>">
                         <i class="fas fa-history"></i>
                         <span>Audit Logs</span>
+                    </a>
+
+                    <a href="<?php echo MODULES_URL; ?>/settings/export_data.php" class="menu-item <?php echo ($currentPage === 'export_data') ? 'active' : ''; ?>">
+                        <i class="fas fa-file-export"></i>
+                        <span>Data Export</span>
                     </a>
 
                     <a href="<?php echo MODULES_URL; ?>/admin/broadcasts.php" class="menu-item <?php echo ($currentPage === 'broadcasts') ? 'active' : ''; ?>">

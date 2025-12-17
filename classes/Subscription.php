@@ -41,6 +41,17 @@ class Subscription {
             ? date('Y-m-d H:i:s', strtotime('+1 year'))
             : date('Y-m-d H:i:s', strtotime('+1 month'));
 
+        // Cancel any existing active/trial subscriptions to ensure only one is active
+        $this->db->update('subscriptions', 
+            [
+                'status' => 'cancelled', 
+                'cancelled_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ], 
+            "company_id = ? AND status IN ('active', 'trial')", 
+            [$companyId]
+        );
+
         // Create subscription
         $subscriptionId = $this->db->insert('subscriptions', [
             'company_id' => $companyId,
@@ -264,6 +275,17 @@ class Subscription {
         // Fetch company owner
         $owner = $this->db->fetchOne(
             "SELECT id FROM users WHERE company_id = ? ORDER BY created_at ASC LIMIT 1",
+            [$companyId]
+        );
+
+        // Cancel any existing active/trial subscriptions to ensure only one is active
+        $this->db->update('subscriptions', 
+            [
+                'status' => 'cancelled', 
+                'cancelled_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ], 
+            "company_id = ? AND status IN ('active', 'trial')", 
             [$companyId]
         );
 

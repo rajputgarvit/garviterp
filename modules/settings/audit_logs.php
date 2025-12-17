@@ -1,18 +1,15 @@
 <?php
-$pageTitle = 'Activity Logs';
 $currentPage = 'audit_logs';
 require_once '../../config/config.php';
-require_once '../../includes/header.php'; // Company header
+require_once '../../includes/admin_layout.php';
 require_once '../../classes/Logger.php';
 
-// Auth Check: Ensure user is logged in (handled by header usually, but explicit check good)
-$auth = new Auth();
-$user = $auth->getCurrentUser();
-if (!$user) {
-    header('Location: ' . MODULES_URL . '/auth/login.php');
-    exit;
-}
+$user = $currentUser;
+?>
 
+<div>
+
+<?php
 $logger = new Logger();
 $db = Database::getInstance();
 
@@ -54,7 +51,7 @@ $companyUsers = $db->fetchAll("SELECT id, full_name FROM users WHERE company_id 
     <div class="card">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="card-title">Activity Logs</div>
-            <a href="index.php" class="btn btn-sm btn-secondary"><i class="fas fa-arrow-left"></i> Back to Settings</a>
+            <a href="../admin/settings.php" class="btn btn-sm btn-secondary"><i class="fas fa-arrow-left"></i> Back to Settings</a>
         </div>
         
         <div class="card-body">
@@ -132,5 +129,10 @@ $companyUsers = $db->fetchAll("SELECT id, full_name FROM users WHERE company_id 
         </div>
     </div>
 </div>
+
+</div>
+</div><!-- End content-area -->
+</main><!-- End main-content -->
+</div><!-- End dashboard-wrapper -->
 
 <?php require_once '../../includes/footer.php'; ?>

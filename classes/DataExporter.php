@@ -9,7 +9,11 @@ class DataExporter {
     }
 
     public function generateBackup($companyId) {
-        $zipFile = tempnam(sys_get_temp_dir(), 'backup_') . '.zip';
+        $tempDir = __DIR__ . '/../public/uploads/temp';
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+        $zipFile = $tempDir . '/backup_' . date('Ymd_His') . '_' . uniqid() . '.zip';
         $zip = new ZipArchive();
 
         if ($zip->open($zipFile, ZipArchive::CREATE) !== TRUE) {

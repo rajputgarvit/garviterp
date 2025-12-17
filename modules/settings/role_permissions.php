@@ -1,14 +1,15 @@
 <?php
-$pageTitle = 'Edit Permissions';
 $currentPage = 'roles';
 require_once '../../config/config.php';
-require_once '../../includes/header.php';
+require_once '../../includes/admin_layout.php';
 require_once '../../classes/Permission.php';
 
-$auth = new Auth();
-$user = $auth->getCurrentUser();
-if (!$user) exit;
+$user = $currentUser;
+?>
 
+<div>
+
+<?php
 $roleId = $_GET['id'] ?? null;
 if (!$roleId) {
     header('Location: roles.php');
@@ -120,5 +121,10 @@ $rolePermissions = $perm->getRolePermissions($roleId);
         });
     });
 </script>
+
+</div>
+</div><!-- End content-area -->
+</main><!-- End main-content -->
+</div><!-- End dashboard-wrapper -->
 
 <?php require_once '../../includes/footer.php'; ?>

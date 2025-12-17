@@ -1,13 +1,10 @@
 <?php
-$pageTitle = 'Data Export';
 $currentPage = 'export_data';
 require_once '../../config/config.php';
-require_once '../../includes/header.php';
+require_once '../../includes/admin_layout.php';
 require_once '../../classes/DataExporter.php';
 
-$auth = new Auth();
-$user = $auth->getCurrentUser();
-if (!$user) exit;
+$user = $currentUser;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
     try {
@@ -32,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
     }
 }
 ?>
+
+<div>
+
+
 
 <div class="container-fluid" style="padding: 20px;">
     <div class="card" style="max-width: 600px; margin: 0 auto;">
@@ -58,10 +59,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export'])) {
             </form>
             
             <div style="margin-top: 20px;">
-                <a href="index.php" class="text-muted small">Back to Settings</a>
+                <a href="../admin/settings.php" class="text-muted small">Back to Settings</a>
             </div>
         </div>
     </div>
 </div>
+
+</div>
+</div><!-- End content-area -->
+</main><!-- End main-content -->
+</div><!-- End dashboard-wrapper -->
 
 <?php require_once '../../includes/footer.php'; ?>

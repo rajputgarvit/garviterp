@@ -133,6 +133,20 @@ try {
     )");
     echo "   - Roles tables ensured.\n";
 
+    // 5. Update subscriptions table: Add cancelled_at if missing
+    echo "5. Updating 'subscriptions' columns...\n";
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM subscriptions LIKE 'cancelled_at'");
+        if (!$stmt->fetch()) {
+             $pdo->exec("ALTER TABLE subscriptions ADD COLUMN cancelled_at DATETIME DEFAULT NULL AFTER status");
+             echo "   - Added 'cancelled_at' column.\n";
+        } else {
+             echo "   - 'cancelled_at' column already exists.\n";
+        }
+    } catch (PDOException $e) {
+        echo "   - Warning checking cancelled_at: " . $e->getMessage() . "\n";
+    }
+
     echo "\nSchema update completed successfully.\n";
 
 } catch (PDOException $e) {

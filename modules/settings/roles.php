@@ -1,14 +1,16 @@
 <?php
-$pageTitle = 'Role Management';
 $currentPage = 'roles';
 require_once '../../config/config.php';
-require_once '../../includes/header.php';
+require_once '../../includes/admin_layout.php'; // Includes sidebar + header + wrappers
 require_once '../../classes/Permission.php';
 
-$auth = new Auth();
-$user = $auth->getCurrentUser();
-if (!$user) exit;
+// Map admin_layout user to local var expected by logic
+$user = $currentUser;
+?>
 
+<div>
+
+<?php
 $perm = new Permission();
 $companyId = $user['company_id'];
 $success = '';
@@ -139,6 +141,7 @@ $roles = $perm->getRoles($companyId);
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <a href="../admin/settings.php" class="btn btn-sm btn-secondary"><i class="fas fa-arrow-left"></i> Back to Settings</a>
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addRoleModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Role</button>
                 </div>
@@ -192,5 +195,9 @@ $roles = $perm->getRoles($companyId);
         }
     }
 </script>
+
+</div><!-- End content-area -->
+</main><!-- End main-content -->
+</div><!-- End dashboard-wrapper -->
 
 <?php require_once '../../includes/footer.php'; ?>
