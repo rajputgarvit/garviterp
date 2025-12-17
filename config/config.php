@@ -85,18 +85,36 @@ define('CONFIG_PATH', ROOT_PATH . '/config');
 define('PUBLIC_PATH', ROOT_PATH . '/public');
 define('ASSETS_PATH', PUBLIC_PATH . '/assets');
 
-// SMTP Configuration
-define('SMTP_HOST', 'mail.acculynce.com');
-define('SMTP_PORT', 465);
-define('SMTP_USER', 'accounts@acculynce.com');
-define('SMTP_PASS', 'Garvit223@');
-define('SMTP_SECURE', 'ssl'); // ssl or tls
+// Email Configuration (Resend)
 define('SMTP_FROM_EMAIL', 'accounts@acculynce.com');
 define('SMTP_FROM_NAME', 'Acculynce Accounts');
+define('RESEND_API_KEY', 're_9JHbh382_56VYHuEmYz8wEKJWTrDLSKdL');
 
 // Helper function to get module path
 function module_path($module, $file = '') {
     return MODULES_PATH . '/' . $module . ($file ? '/' . $file : '');
+}
+
+// Obfuscated URL Helper
+function url($path) {
+    // If not in DB context or setup, return raw
+    if (!class_exists('Database')) {
+        return BASE_URL . $path;
+    }
+    
+    // Lazy load Router
+    static $router = null;
+    if ($router === null) {
+        if (file_exists(CLASSES_PATH . '/Router.php')) {
+            require_once CLASSES_PATH . '/Router.php';
+            $router = new Router();
+        } else {
+            return BASE_URL . $path;
+        }
+    }
+    
+    $token = $router->getToken($path);
+    return BASE_URL . $token;
 }
 
 // -----------------------------------------------------------------------------
