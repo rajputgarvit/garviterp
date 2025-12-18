@@ -59,7 +59,9 @@ class StockManager {
      * Add stock (from purchase)
      */
     public function addStock($productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null, $companyId = null) {
-        // Balance updated via trigger on stock_transactions
+        // Update balance
+        $this->updateStockBalance($productId, $warehouseId, $quantity);
+        // Record transaction
         $this->recordTransaction('IN', $productId, $warehouseId, $quantity, $referenceType, $referenceId, $remarks, $userId, $companyId);
     }
     
@@ -77,7 +79,9 @@ class StockManager {
             throw new Exception("Insufficient stock available");
         }
         
-        // Balance updated via trigger on stock_transactions
+        // Update balance
+        $this->updateStockBalance($productId, $warehouseId, -$quantity);
+        // Record transaction
         $this->recordTransaction('OUT', $productId, $warehouseId, $quantity, $referenceType, $referenceId, $remarks, $userId, $companyId);
     }
     
