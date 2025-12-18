@@ -1,9 +1,13 @@
 <?php
 // session_start(); // Handled in config.php
 require_once '../../../config/config.php';
-require_once '../../../classes/Auth.php';
-require_once '../../../classes/Database.php';
+require_once '../../../includes/Auth.php';
+require_once '../../../includes/Database.php';
 require_once '../../../classes/CodeGenerator.php';
+
+// Temporary: Block access to Sales Order module
+header('Location: ' . BASE_URL . 'modules/dashboard/index.php');
+exit;
 
 $auth = new Auth();
 // Auth::enforceGlobalRouteSecurity() handles permissions.
@@ -756,7 +760,10 @@ $quotations = $db->fetchAll("SELECT id, quotation_number FROM quotations WHERE s
                                                             <option value="<?php echo $product['id']; ?>" 
                                                                     data-price="<?php echo $product['selling_price']; ?>"
                                                                     data-tax="<?php echo $product['tax_rate']; ?>"
-                                                                    data-name="<?php echo htmlspecialchars($product['name']); ?>">
+                                                                    data-name="<?php echo htmlspecialchars($product['name']); ?>"
+                                                                    data-has-serial="<?php echo $product['has_serial_number']; ?>"
+                                                                    data-has-warranty="<?php echo $product['has_warranty']; ?>"
+                                                                    data-has-expiry="<?php echo $product['has_expiry_date']; ?>">
                                                                 <?php echo htmlspecialchars($product['product_code'] . ' - ' . $product['name']); ?>
                                                             </option>
                                                         <?php endforeach; ?>
@@ -950,10 +957,6 @@ $quotations = $db->fetchAll("SELECT id, quotation_number FROM quotations WHERE s
         </div>
     </div>
 
-    <!-- jQuery CDN (required for Select2) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Select2 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         // Pass PHP data to JS
         window.productsData = <?php echo json_encode($products); ?>;
