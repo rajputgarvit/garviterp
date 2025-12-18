@@ -113,10 +113,10 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
                     <i class="fas fa-file-invoice"></i>
                     <span>Quotations</span>
                 </a>
-                <a href="<?php echo MODULES_URL; ?>/sales/orders/index" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/sales/orders/') !== false ? 'active' : ''; ?>" title="Sales Orders">
+                <!-- <a href="<?php echo MODULES_URL; ?>/sales/orders/index" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/sales/orders/') !== false ? 'active' : ''; ?>" title="Sales Orders">
                     <i class="fas fa-shopping-cart"></i>
                     <span>Sales Orders</span>
-                </a>
+                </a> -->
                 <a href="<?php echo MODULES_URL; ?>/sales/invoices/index" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/sales/invoices/') !== false ? 'active' : ''; ?>" title="Invoices">
                     <i class="fas fa-receipt"></i>
                     <span>Invoices</span>
