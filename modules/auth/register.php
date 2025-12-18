@@ -88,119 +88,147 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - <?php echo APP_NAME; ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../../public/assets/css/landing.css">
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --text-dark: #1e293b;
-            --text-gray: #64748b;
-            --bg-light: #f8fafc;
-            --border-color: #e2e8f0;
-            --error-color: #ef4444;
-            --success-color: #10b981;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', sans-serif;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-        }
-
-        /* Left Side - Branding */
-        .split-left {
-            flex: 1;
-            background: #0f172a;
-            position: relative;
+            background-color: var(--bg-light);
+            padding-top: 80px;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
             align-items: center;
-            padding: 60px;
-            color: white;
-            overflow: hidden;
+            justify-content: center;
+            padding: 40px 20px;
         }
 
-        .split-left::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.2) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 40%);
-            z-index: 1;
+        .auth-container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
         }
 
-        .brand-content {
-            position: relative;
-            z-index: 2;
-            text-align: center;
-            max-width: 480px;
+        /* Left Side Content */
+        .auth-content {
+            padding-right: 40px;
+            animation: fadeInLeft 0.6s ease-out;
         }
 
-        .brand-logo {
-            max-width: 220px;
-            height: auto;
-            margin-bottom: 40px;
-            filter: brightness(0) invert(1);
-        }
-
-        .brand-heading {
-            font-size: 42px;
-            font-weight: 700;
+        .auth-content h1 {
+            font-size: 3rem;
+            font-weight: 800;
             line-height: 1.2;
             margin-bottom: 24px;
+            color: var(--text-primary);
             letter-spacing: -0.02em;
         }
 
-        .brand-text {
-            font-size: 18px;
-            color: #94a3b8;
-            line-height: 1.6;
+        .auth-content h1 span {
+            background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        /* Right Side - Form */
-        .split-right {
-            flex: 1;
-            background: white;
+        .auth-content p {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 40px;
+        }
+
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .feature-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary-color);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px;
-            overflow-y: auto;
+            font-size: 0.9rem;
         }
 
-        .auth-wrapper {
+        .auth-card {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: var(--shadow-xl);
             width: 100%;
-            max-width: 460px; /* Slightly wider for register form */
-            padding: 20px;
+            max-width: 500px;
+            border: 1px solid var(--border-color);
+            margin-left: auto;
+            animation: fadeInRight 0.6s ease-out;
         }
 
         .auth-header {
-            margin-bottom: 32px;
+            text-align: center;
+            margin-bottom: 30px;
         }
 
         .auth-title {
-            font-size: 30px;
-            font-weight: 700;
-            color: var(--text-dark);
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
         .auth-subtitle {
-            color: var(--text-gray);
-            font-size: 15px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.2);
+        }
+
+        .form-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .form-section.active {
+            display: block;
         }
 
         .form-group {
@@ -210,9 +238,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-label {
             display: block;
             margin-bottom: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
         .form-control {
@@ -220,273 +248,351 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 16px;
             background: #fff;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 15px;
-            color: var(--text-dark);
+            border-radius: 12px;
+            font-size: 1rem;
+            color: var(--text-primary);
             transition: all 0.2s;
         }
 
         .form-control:focus {
             border-color: var(--primary-color);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 4px var(--accent-glow);
         }
 
         .btn-primary {
             width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 14px;
             background: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
         }
 
         .btn-primary:hover {
-            background: var(--primary-hover);
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 12px rgba(79, 70, 229, 0.3);
         }
 
-        .auth-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
+        .btn-secondary {
+            width: 100%;
+            padding: 14px;
+            background: #f1f5f9;
+            color: var(--text-secondary);
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
         }
 
-        .auth-link:hover {
-            text-decoration: underline;
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            color: var(--text-primary);
         }
 
         .auth-footer {
             margin-top: 24px;
             text-align: center;
-            font-size: 14px;
-            color: var(--text-gray);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
         }
 
-        .divider {
-            margin: 24px 0;
-            position: relative;
-            text-align: center;
-        }
-        
-        .divider::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            width: 100%;
-            height: 1px;
-            background: #e2e8f0;
-        }
-        
-        .divider span {
-            background: white;
-            padding: 0 10px;
-            color: #94a3b8;
-            font-size: 12px;
-            position: relative;
+        .auth-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
         }
 
-        .alert {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            font-size: 14px;
+        .auth-link:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInLeft {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .buttons-row {
             display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-danger {
-            background: #fef2f2;
-            color: #ef4444;
-            border: 1px solid #fee2e2;
-        }
-        
-        .alert-success {
-            background: #f0fdf4;
-            color: #15803d;
-            border: 1px solid #dcfce7;
+            gap: 12px;
         }
 
         .password-strength {
             margin-top: 6px;
-            font-size: 12px;
+            font-size: 0.8rem;
             height: 18px;
+            font-weight: 500;
         }
         
         .strength-weak { color: #ef4444; }
         .strength-medium { color: #f59e0b; }
         .strength-strong { color: #10b981; }
 
-        /* Mobile Responsive */
-        @media (max-width: 900px) {
-            body {
-                flex-direction: column;
-                overflow-y: auto;
-            }
-            .split-left {
-                display: none;
-            }
-            .split-right {
-                padding: 20px;
-                min-height: 100vh;
-            }
-             .mobile-logo {
-                 display: block;
-                 text-align: center;
-                 margin-bottom: 30px;
-             }
-             .mobile-logo img {
-                 max-height: 40px;
-             }
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            display: none;
         }
-        @media (min-width: 901px) {
-            .mobile-logo { display: none; }
+
+        @media (max-width: 968px) {
+            .auth-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .auth-content {
+                padding-right: 0;
+                text-align: center;
+            }
+            .auth-content h1 {
+                font-size: 2.5rem;
+            }
+            .feature-list {
+                align-items: center;
+            }
+            .auth-card {
+                margin: 0 auto;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Left Side -->
-    <div class="split-left">
-        <div class="brand-content">
-            <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce Logo" class="brand-logo">
-            <h1 class="brand-heading">Start your 14-day free trial</h1>
-            <p class="brand-text">Join thousands of growing businesses managing their operations on Acculynce.</p>
-        </div>
-    </div>
+    <!-- Navbar -->
+    <?php require_once '../../includes/public_header.php'; ?>
 
-    <!-- Right Side -->
-    <div class="split-right">
-        <div class="auth-wrapper">
-             <div class="mobile-logo">
-                <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce">
+    <div class="main-content">
+        <div class="auth-container">
+            <!-- Left Side -->
+            <div class="auth-content">
+                <h1>Join the Future of <span>Business</span></h1>
+                <p>Start your 14-day free trial today. No credit card required. Experience the power of unified business management.</p>
+                
+                <ul class="feature-list">
+                    <li class="feature-item">
+                        <div class="feature-icon"><i class="fas fa-rocket"></i></div>
+                        <div>Setup in less than 5 minutes</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                        <div>Bank-grade data security</div>
+                    </li>
+                    <li class="feature-item">
+                        <div class="feature-icon"><i class="fas fa-headset"></i></div>
+                        <div>24/7 Priority Support</div>
+                    </li>
+                </ul>
             </div>
 
-            <div class="auth-header">
+            <!-- Right Side -->
+            <div class="auth-card">
+                <div class="auth-header">
                 <h1 class="auth-title">Create Account</h1>
-                <p class="auth-subtitle">Get started with your free account today</p>
+                <p class="auth-subtitle">Get started with your free 14-day trial</p>
+            </div>
+
+            <div class="step-indicator">
+                <div class="step-dot active" id="dot1"></div>
+                <div class="step-dot" id="dot2"></div>
             </div>
 
             <?php if ($error): ?>
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($success): ?>
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i>
-                    <?php echo htmlspecialchars($success); ?>
+                <div class="alert alert-danger" style="background: #fef2f2; color: #ef4444; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fee2e2;">
+                    <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
                 </div>
             <?php endif; ?>
 
             <form method="POST" id="registerForm">
-                <div class="form-group">
-                    <label class="form-label">Company Name <span style="color: var(--error-color)">*</span></label>
-                    <input type="text" name="company_name" class="form-control" required 
-                           value="<?php echo htmlspecialchars($_POST['company_name'] ?? ''); ?>" placeholder="Your Company Name">
+                <!-- Step 1: Personal Info -->
+                <div class="form-section active" id="step1">
+                    <div class="form-group">
+                        <label class="form-label">Full Name <span style="color: #ef4444">*</span></label>
+                        <input type="text" name="full_name" id="full_name" class="form-control" 
+                               value="<?php echo htmlspecialchars($_POST['full_name'] ?? ''); ?>" placeholder="John Doe">
+                        <div class="error-msg" id="err-name">Full name is required</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email Address <span style="color: #ef4444">*</span></label>
+                        <input type="email" name="email" id="email" class="form-control" 
+                               value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" placeholder="name@company.com">
+                        <div class="error-msg" id="err-email">Valid email is required</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Phone Number</label>
+                        <input type="tel" name="phone" class="form-control"
+                               value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" placeholder="+91 98765 43210">
+                    </div>
+
+                    <button type="button" class="btn-primary" onclick="nextStep()">
+                        Next Step <i class="fas fa-arrow-right" style="margin-left: 8px;"></i>
+                    </button>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Your Full Name <span style="color: var(--error-color)">*</span></label>
-                    <input type="text" name="full_name" class="form-control" required
-                           value="<?php echo htmlspecialchars($_POST['full_name'] ?? ''); ?>" placeholder="John Doe">
-                </div>
+                <!-- Step 2: Company & Security -->
+                <div class="form-section" id="step2">
+                    <div class="form-group">
+                        <label class="form-label">Company Name <span style="color: #ef4444">*</span></label>
+                        <input type="text" name="company_name" id="company_name" class="form-control" 
+                               value="<?php echo htmlspecialchars($_POST['company_name'] ?? ''); ?>" placeholder="Your Company Name">
+                        <div class="error-msg" id="err-company">Company name is required</div>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Email Address <span style="color: var(--error-color)">*</span></label>
-                    <input type="email" name="email" class="form-control" required
-                           value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" placeholder="name@company.com">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label">Password <span style="color: #ef4444">*</span></label>
+                        <input type="password" name="password" id="password" class="form-control" 
+                               placeholder="Min. 8 characters">
+                        <div class="password-strength" id="passwordStrength"></div>
+                        <div class="error-msg" id="err-password">Password must be at least 8 characters</div>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Phone Number</label>
-                    <input type="tel" name="phone" class="form-control"
-                           value="<?php echo htmlspecialchars($_POST['phone'] ?? ''); ?>" placeholder="+91 98765 43210">
-                </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password <span style="color: #ef4444">*</span></label>
+                        <input type="password" name="confirm_password" id="confirm_password" class="form-control" 
+                               placeholder="Retype password">
+                        <div class="error-msg" id="err-confirm">Passwords do not match</div>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Password <span style="color: var(--error-color)">*</span></label>
-                    <input type="password" name="password" class="form-control" required 
-                           id="password" minlength="8" placeholder="••••••••">
-                    <div class="password-strength" id="passwordStrength"></div>
+                    <div class="buttons-row">
+                        <button type="button" class="btn-secondary" onclick="prevStep()" style="width: 40%; margin-top: 0;">Back</button>
+                        <button type="submit" class="btn-primary" style="width: 60%; margin-top: 0;">Create Account</button>
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="form-label">Confirm Password <span style="color: var(--error-color)">*</span></label>
-                    <input type="password" name="confirm_password" class="form-control" required 
-                           id="confirmPassword" minlength="8" placeholder="••••••••">
-                </div>
-
-                <button type="submit" class="btn-primary">
-                    Create Account & Choose Plan
-                </button>
             </form>
-
-            <div class="divider">
-                <span>OR</span>
-            </div>
 
             <div class="auth-footer">
                 Already have an account? <a href="login.php" class="auth-link">Sign in</a>
             </div>
-            
-             <div style="margin-top: 40px; text-align: center; color: #cbd5e1; font-size: 12px;">
-                &copy; <?php echo date('Y'); ?> <?php echo APP_NAME; ?>. All rights reserved.
-            </div>
+        </div>
         </div>
     </div>
 
+    <!-- Footer -->
+    <?php require_once '../../includes/public_footer.php'; ?>
+
     <script>
-        // Password strength checker
-        const password = document.getElementById('password');
+        // Use PHP's posted values to possibly open step 2 if errors occurred there? 
+        // For simplicity, always start at step 1 unless we want complex logic. 
+        // Standard user flow is linear.
+
+        function nextStep() {
+            // Validate Step 1
+            const name = document.getElementById('full_name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            let valid = true;
+
+            if (!name) {
+                document.getElementById('err-name').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('err-name').style.display = 'none';
+            }
+
+            if (!email || !emailRegex.test(email)) {
+                document.getElementById('err-email').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('err-email').style.display = 'none';
+            }
+
+            if (valid) {
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+                document.getElementById('dot1').classList.remove('active');
+                document.getElementById('dot2').classList.add('active');
+            }
+        }
+
+        function prevStep() {
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step1').classList.add('active');
+            document.getElementById('dot2').classList.remove('active');
+            document.getElementById('dot1').classList.add('active');
+        }
+
+        // Final Validation on Submit
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            const company = document.getElementById('company_name').value.trim();
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirm_password').value;
+
+            let valid = true;
+
+            if (!company) {
+                document.getElementById('err-company').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('err-company').style.display = 'none';
+            }
+
+            if (password.length < 8) {
+                document.getElementById('err-password').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('err-password').style.display = 'none';
+            }
+
+            if (password !== confirm) {
+                document.getElementById('err-confirm').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('err-confirm').style.display = 'none';
+            }
+
+            if (!valid) {
+                e.preventDefault();
+            }
+        });
+
+        // Password Strength
+        const passwordInput = document.getElementById('password');
         const strengthDiv = document.getElementById('passwordStrength');
 
-        password.addEventListener('input', function() {
+        passwordInput.addEventListener('input', function() {
             const value = this.value;
+            if (!value) {
+                strengthDiv.textContent = '';
+                return;
+            }
             let strength = 0;
-            
             if (value.length >= 8) strength++;
             if (value.match(/[a-z]/) && value.match(/[A-Z]/)) strength++;
             if (value.match(/[0-9]/)) strength++;
             if (value.match(/[^a-zA-Z0-9]/)) strength++;
 
-            if (strength === 0) {
-                strengthDiv.textContent = '';
-            } else if (strength <= 2) {
-                strengthDiv.textContent = 'Weak password';
+            if (strength <= 2) {
+                strengthDiv.textContent = 'Weak';
                 strengthDiv.className = 'password-strength strength-weak';
             } else if (strength === 3) {
-                strengthDiv.textContent = 'Medium password';
+                strengthDiv.textContent = 'Medium';
                 strengthDiv.className = 'password-strength strength-medium';
             } else {
-                strengthDiv.textContent = 'Strong password';
+                strengthDiv.textContent = 'Strong';
                 strengthDiv.className = 'password-strength strength-strong';
-            }
-        });
-
-        // Form validation
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                alert('Passwords do not match!');
-                return false;
-            }
-
-            if (password.length < 8) {
-                e.preventDefault();
-                alert('Password must be at least 8 characters!');
-                return false;
             }
         });
     </script>

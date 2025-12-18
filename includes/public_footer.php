@@ -21,28 +21,28 @@
             <div class="footer-col">
                 <h4>Product</h4>
                 <ul class="footer-links">
-                    <li><a href="#">Features</a></li>
-                    <li><a href="#">Pricing</a></li>
-                    <li><a href="#">Security</a></li>
-                    <li><a href="#">Roadmap</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/features.php">Features</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/pricing.php">Pricing</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/security.php">Security</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/roadmap.php">Roadmap</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h4>Company</h4>
                 <ul class="footer-links">
-                    <li><a href="#">About</a></li>
-                    <li><a href="#">Careers</a></li>
-                    <li><a href="#">Blog</a></li>
-                    <li><a href="#">Contact</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/about.php">About</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/careers.php">Careers</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/blog.php">Blog</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/contact.php">Contact</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h4>Resources</h4>
                 <ul class="footer-links">
-                    <li><a href="#">Documentation</a></li>
-                    <li><a href="#">API Reference</a></li>
-                    <li><a href="#">Community</a></li>
-                    <li><a href="#">Help Center</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/documentation.php">Documentation</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/api-reference.php">API Reference</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/community.php">Community</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/pages/help-center.php">Help Center</a></li>
                 </ul>
             </div>
         </div>

@@ -12,9 +12,9 @@ if (!defined('BASE_URL')) {
                 style="max-width: 150px; max-height: 60px; height: auto; mix-blend-mode: multiply;" />
         </a>
         <ul class="nav-menu">
-            <li><a href="<?php echo BASE_URL; ?>public/landing.php#features">Features</a></li>
-            <li><a href="<?php echo BASE_URL; ?>public/landing.php#pricing">Pricing</a></li>
-            <li><a href="<?php echo BASE_URL; ?>public/landing.php#contact">Resources</a></li>
+            <li><a href="<?php echo BASE_URL; ?>public/pages/features.php">Features</a></li>
+            <li><a href="<?php echo BASE_URL; ?>public/pages/pricing.php">Pricing</a></li>
+            <li><a href="<?php echo BASE_URL; ?>public/pages/contact.php">Resources</a></li>
             <li><a href="<?php echo BASE_URL; ?>modules/auth/login.php" class="btn-login">Sign In</a></li>
         </ul>
     </div>
