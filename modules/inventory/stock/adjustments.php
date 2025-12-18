@@ -11,8 +11,8 @@ $user = $auth->getCurrentUser();
 $db = Database::getInstance();
 
 // Fetch warehouses and products for dropdowns
-$warehouses = $db->fetchAll("SELECT id, name, code FROM warehouses WHERE is_active = 1 ORDER BY name");
-$products = $db->fetchAll("SELECT id, name, product_code FROM products WHERE is_active = 1 ORDER BY name");
+$warehouses = $db->fetchAll("SELECT id, name, code FROM warehouses WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
+$products = $db->fetchAll("SELECT id, name, product_code FROM products WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
 
 // Pre-select product if passed in URL
 $selectedProductId = $_GET['product_id'] ?? '';
@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'quantity' => $quantity,
             'reference_type' => 'Manual Adjustment',
             'remarks' => $remarks,
-            'created_by' => $user['id']
+            'created_by' => $user['id'],
+            'company_id' => $user['company_id']
         ]);
         
         // Stock balance is updated automatically via database trigger 'after_stock_transaction_insert'

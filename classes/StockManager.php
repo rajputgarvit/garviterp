@@ -41,7 +41,7 @@ class StockManager {
     /**
      * Record stock transaction
      */
-    private function recordTransaction($type, $productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null) {
+    private function recordTransaction($type, $productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null, $companyId = null) {
         $this->db->insert('stock_transactions', [
             'transaction_type' => $type,
             'product_id' => $productId,
@@ -50,22 +50,23 @@ class StockManager {
             'reference_type' => $referenceType,
             'reference_id' => $referenceId,
             'remarks' => $remarks,
-            'created_by' => $userId
+            'created_by' => $userId,
+            'company_id' => $companyId
         ]);
     }
     
     /**
      * Add stock (from purchase)
      */
-    public function addStock($productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null) {
+    public function addStock($productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null, $companyId = null) {
         // Balance updated via trigger on stock_transactions
-        $this->recordTransaction('IN', $productId, $warehouseId, $quantity, $referenceType, $referenceId, $remarks, $userId);
+        $this->recordTransaction('IN', $productId, $warehouseId, $quantity, $referenceType, $referenceId, $remarks, $userId, $companyId);
     }
     
     /**
      * Remove stock (from sales)
      */
-    public function removeStock($productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null) {
+    public function removeStock($productId, $warehouseId, $quantity, $referenceType = null, $referenceId = null, $remarks = null, $userId = null, $companyId = null) {
         // Check if sufficient stock available
         $balance = $this->db->fetchOne(
             "SELECT available_quantity FROM stock_balance WHERE product_id = ? AND warehouse_id = ?",
@@ -77,7 +78,7 @@ class StockManager {
         }
         
         // Balance updated via trigger on stock_transactions
-        $this->recordTransaction('OUT', $productId, $warehouseId, $quantity, $referenceType, $referenceId, $remarks, $userId);
+        $this->recordTransaction('OUT', $productId, $warehouseId, $quantity, $referenceType, $referenceId, $remarks, $userId, $companyId);
     }
     
     /**
@@ -139,13 +140,13 @@ class StockManager {
     /**
      * Adjust stock (manual adjustment)
      */
-    public function adjustStock($productId, $warehouseId, $newQuantity, $remarks = null, $userId = null) {
+    public function adjustStock($productId, $warehouseId, $newQuantity, $remarks = null, $userId = null, $companyId = null) {
         $current = $this->getStock($productId, $warehouseId);
         $currentQty = $current ? $current['quantity'] : 0;
         $difference = $newQuantity - $currentQty;
         
         $this->updateStockBalance($productId, $warehouseId, $difference);
-        $this->recordTransaction('ADJUSTMENT', $productId, $warehouseId, abs($difference), null, null, $remarks, $userId);
+        $this->recordTransaction('ADJUSTMENT', $productId, $warehouseId, abs($difference), null, null, $remarks, $userId, $companyId);
     }
 }
 ?>

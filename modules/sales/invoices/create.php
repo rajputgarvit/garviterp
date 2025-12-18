@@ -121,7 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             'invoice',
                             $invoiceId,
                             'Sale from invoice ' . $_POST['invoice_number'],
-                            $user['id']
+                            $user['id'],
+                            $user['company_id']
                         );
                     } catch (Exception $e) {
                         // Log stock error but don't fail invoice creation
