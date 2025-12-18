@@ -1,8 +1,8 @@
 <?php
 // session_start(); // Handled in config.php
 require_once '../../../config/config.php';
-require_once '../../../includes/Auth.php';
-require_once '../../../includes/Database.php';
+require_once '../../../classes/Auth.php';
+require_once '../../../classes/Database.php';
 require_once '../../../classes/CodeGenerator.php';
 
 // Temporary: Block access to Sales Order module
