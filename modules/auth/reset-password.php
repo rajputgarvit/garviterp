@@ -1,67 +1,48 @@
 <?php
-// session_start(); // Handled in config.php
 require_once '../../config/config.php';
 require_once '../../classes/Auth.php';
 
 $auth = new Auth();
+$error = '';
+$success = '';
+$token = $_GET['token'] ?? '';
+$isValidToken = false;
 
-    if ($auth->isLoggedIn()) {
-        header('Location: ' . MODULES_URL . '/dashboard/index.php');
-        exit;
+// Validate token initially
+if ($token) {
+    if ($auth->verifyPasswordResetToken($token)) {
+        $isValidToken = true;
+    } else {
+        $error = 'Invalid or expired password reset link.';
     }
+} else {
+    $error = 'Missing reset token.';
+}
 
-    $error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isValidToken) {
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $username = $_POST['username'] ?? '';
-        $password = $_POST['password'] ?? '';
-        
-        if ($auth->login($username, $password)) {
-            // Check for maintenance mode
-            $db = Database::getInstance();
-            $maintenanceMode = $db->fetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'")['setting_value'] ?? '0';
-            
-            if ($maintenanceMode == '1' && !$auth->hasRole('Super Admin')) {
-                $auth->logout();
-                $error = 'System is currently in maintenance mode. Only administrators can log in.';
-            } else {
-                // Check if Super Admin needs to setup company (e.g. after reset)
-                if ($auth->hasRole('Super Admin')) {
-                    $currentUser = $auth->getCurrentUser();
-                    $companyId = $currentUser['company_id'];
-                    $companyExists = false;
-                    
-                    if (!empty($companyId)) {
-                        $companyCheck = $db->fetchOne("SELECT id FROM company_settings WHERE id = ?", [$companyId]);
-                        if ($companyCheck) {
-                            $companyExists = true;
-                        }
-                    }
-                    
-                    if (!$companyExists) {
-                        header('Location: ' . MODULES_URL . '/admin/setup_company.php');
-                        exit;
-                    }
-                }
-
-                if ($auth->isAdmin()) {
-                    header('Location: ' . MODULES_URL . '/admin/dashboard.php');
-                } else {
-                    header('Location: ' . MODULES_URL . '/dashboard/index.php');
-                }
-                exit;
-            }
+    if (strlen($password) < 6) {
+        $error = 'Password must be at least 6 characters long.';
+    } elseif ($password !== $confirmPassword) {
+        $error = 'Passwords do not match.';
+    } else {
+        if ($auth->resetPasswordWithToken($token, $password)) {
+            $success = 'Your password has been reset successfully.';
+            $isValidToken = false; // Prevent resubmission
         } else {
-            $error = 'Invalid username or password';
+            $error = 'Failed to reset password. Please try again.';
         }
     }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - <?php echo APP_NAME; ?></title>
+    <title>Reset Password - <?php echo APP_NAME; ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../public/assets/css/landing.css">
@@ -165,6 +146,12 @@ $auth = new Auth();
             margin-bottom: 30px;
         }
 
+        .auth-logo {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
         .auth-title {
             font-size: 1.75rem;
             font-weight: 800;
@@ -229,6 +216,28 @@ $auth = new Auth();
             box-shadow: 0 8px 12px rgba(79, 70, 229, 0.3);
         }
 
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #ef4444;
+            border: 1px solid #fee2e2;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #dcfce7;
+        }
+
         .auth-footer {
             margin-top: 24px;
             text-align: center;
@@ -245,34 +254,6 @@ $auth = new Auth();
 
         .auth-link:hover {
             color: var(--primary-dark);
-            text-decoration: underline;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-danger {
-            background: #fef2f2;
-            color: #ef4444;
-            border: 1px solid #fee2e2;
-        }
-
-        .forgot-password {
-            float: right;
-            font-size: 0.85rem;
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .forgot-password:hover {
             text-decoration: underline;
         }
 
@@ -302,7 +283,7 @@ $auth = new Auth();
             }
             
             .feature-list {
-                align-items: center; /* Center items on mobile */
+                align-items: center;
             }
             
             .auth-card {
@@ -319,21 +300,21 @@ $auth = new Auth();
         <div class="auth-container">
             <!-- Left Side Content -->
             <div class="auth-content">
-                <h1>Scale your business with <span>Confidence</span></h1>
-                <p>The complete operating system for modern enterprises. Unify your team, streamline operations, and drive growth with Acculynce.</p>
+                <h1>Create a new <span>Password</span></h1>
+                <p>Choose a strong password to keep your account secure. We recommend using a mix of letters, numbers, and symbols.</p>
                 
                 <ul class="feature-list">
                     <li class="feature-item">
-                        <div class="feature-icon"><i class="fas fa-check"></i></div>
-                        <div>Enterprise-grade Security</div>
+                        <div class="feature-icon"><i class="fas fa-key"></i></div>
+                        <div>Secure Authentication</div>
                     </li>
                     <li class="feature-item">
-                        <div class="feature-icon"><i class="fas fa-check"></i></div>
-                        <div>Real-time Analytics & Reporting</div>
+                        <div class="feature-icon"><i class="fas fa-lock"></i></div>
+                        <div>Encrypted Password Storage</div>
                     </li>
                     <li class="feature-item">
-                        <div class="feature-icon"><i class="fas fa-check"></i></div>
-                        <div>Seamless Team Collaboration</div>
+                        <div class="feature-icon"><i class="fas fa-user-shield"></i></div>
+                        <div>Account Protection</div>
                     </li>
                 </ul>
             </div>
@@ -341,42 +322,56 @@ $auth = new Auth();
             <!-- Right Side Login Card -->
             <div class="auth-card">
                 <div class="auth-header">
-                <h1 class="auth-title">Welcome back</h1>
-                <p class="auth-subtitle">Sign in to access your dashboard</p>
-            </div>
-            
-            <?php if ($error): ?>
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-            
-            <form method="POST" action="">
-                <div class="form-group">
-                    <label class="form-label" for="username">Email or Username</label>
-                    <input type="text" id="username" name="username" class="form-control" 
-                           placeholder="name@company.com" required autofocus>
-                </div>
-                
-                <div class="form-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label class="form-label" for="password" style="margin-bottom: 0;">Password</label>
-                        <a href="forgot-password.php" class="forgot-password">Forgot password?</a>
+                    <div class="auth-logo">
+                        <i class="fas fa-lock"></i>
                     </div>
-                    <input type="password" id="password" name="password" class="form-control" 
-                           placeholder="••••••••" required>
+                    <h1 class="auth-title">Reset Password</h1>
+                    <p class="auth-subtitle">Enter your new password below</p>
                 </div>
+
+                <?php if ($error): ?>
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+                    </div>
+                    <a href="login.php" class="btn-primary" style="text-decoration: none;">Proceed to Login</a>
+                <?php elseif ($isValidToken): ?>
+                    <form method="POST" action="">
+                        <div class="form-group">
+                            <label class="form-label" for="password">New Password</label>
+                            <input type="password" id="password" name="password" class="form-control" 
+                                   required minlength="6" autofocus>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="confirm_password">Confirm Password</label>
+                            <input type="password" id="confirm_password" name="confirm_password" class="form-control" 
+                                   required minlength="6">
+                        </div>
+
+                        <button type="submit" class="btn-primary">
+                            Reset Password
+                        </button>
+                    </form>
+                <?php else: ?>
+                    <div style="text-align: center;">
+                        <a href="forgot-password.php" class="btn-primary" style="text-decoration: none;">Request New Link</a>
+                    </div>
+                <?php endif; ?>
                 
-                <button type="submit" class="btn-primary">
-                    <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Sign in
-                </button>
-            </form>
-            
-            <div class="auth-footer">
-                Don't have an account? <a href="register.php" class="auth-link">Create free account</a>
+                <?php if (!$success): ?>
+                <div class="auth-footer">
+                    <a href="login.php" class="auth-link">
+                        <i class="fas fa-arrow-left"></i> Back to Login
+                    </a>
+                </div>
+                <?php endif; ?>
             </div>
-        </div>
         </div>
     </div>
 
