@@ -102,155 +102,155 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - Acculynce</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Include Landing CSS -->
+    <link rel="stylesheet" href="../../public/assets/css/landing.css">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Inter', sans-serif;
-            background: #f9fafb;
-            padding: 40px 20px;
+            background-color: var(--bg-light);
+            padding-top: 80px;
         }
 
         .checkout-container {
-            max-width: 900px;
-            margin: 0 auto;
+            max-width: 1000px;
+            margin: 40px auto;
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 30px;
+            grid-template-columns: 1fr 380px;
+            gap: 40px;
+            padding: 0 20px;
         }
 
-        .checkout-main {
+        .checkout-main, .checkout-sidebar {
             background: white;
+            border-radius: 20px;
             padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
         }
 
         .checkout-sidebar {
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             height: fit-content;
             position: sticky;
-            top: 20px;
+            top: 100px;
         }
 
         h1 {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            color: #1f2937;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
         }
 
         .subtitle {
-            color: #6b7280;
+            color: var(--text-secondary);
             margin-bottom: 30px;
         }
 
         .trial-badge {
-            background: #10b981;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+            padding: 10px 20px;
+            border-radius: 12px;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
+            gap: 10px;
+            margin-bottom: 30px;
+            font-weight: 500;
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
-        .order-summary {
-            border-top: 2px solid #e5e7eb;
-            padding-top: 20px;
-            margin-top: 20px;
+        .plan-summary-card {
+            background: var(--bg-light);
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 30px;
         }
 
-        .summary-row {
+        .plan-summary-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
-            color: #6b7280;
         }
 
-        .summary-row.total {
-            font-size: 1.3rem;
+        .plan-summary-header h3 {
+            font-size: 1.2rem;
+            color: var(--primary-color);
             font-weight: 700;
-            color: #1f2937;
-            padding-top: 15px;
-            border-top: 2px solid #e5e7eb;
-        }
-
-        .plan-details {
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .plan-details h3 {
-            color: #667eea;
-            margin-bottom: 10px;
         }
 
         .features-list {
             list-style: none;
-            margin-top: 15px;
         }
 
         .features-list li {
             padding: 8px 0;
-            color: #6b7280;
+            color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-size: 0.95rem;
         }
 
         .features-list i {
-            color: #10b981;
+            color: var(--success-color);
         }
 
-        .btn {
+        .btn-pay {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary-color);
             color: white;
             border: none;
             border-radius: 12px;
             font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
+            margin-top: 20px;
         }
 
-        .btn:hover {
+        .btn-pay:hover {
+            background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: var(--shadow-lg);
         }
 
-        .btn-trial {
-            background: #10b981;
+        .btn-pay.trial {
+            background: var(--success-color);
+        }
+        
+        .btn-pay.trial:hover {
+             background: #059669; /* Darker green */
         }
 
-        .btn-trial:hover {
-            background: #059669;
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
         }
 
-        .security-note {
+        .summary-row.total {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .secure-badge {
             text-align: center;
             margin-top: 20px;
-            color: #6b7280;
+            color: var(--text-light);
             font-size: 0.85rem;
             display: flex;
             align-items: center;
@@ -258,38 +258,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
             gap: 8px;
         }
 
-        .security-note i {
-            color: #10b981;
-        }
-
-        @media (max-width: 968px) {
+        @media (max-width: 900px) {
             .checkout-container {
                 grid-template-columns: 1fr;
             }
-
             .checkout-sidebar {
                 position: static;
+                order: -1; /* Show summary first on mobile? Or maybe keep it below. Let's keep distinct. */
+                order: 1; 
             }
         }
     </style>
 </head>
 <body>
+
+    <!-- Navbar -->
+    <?php require_once '../../includes/public_header.php'; ?>
+
     <div class="checkout-container">
         <div class="checkout-main">
             <h1>Complete Your Order</h1>
-            <p class="subtitle">Start your 14-day free trial today</p>
+            <p class="subtitle">You're just one step away from modernizing your business.</p>
 
             <div class="trial-badge">
                 <i class="fas fa-gift"></i>
-                14-Day Free Trial - No Credit Card Required
+                <span>14-Day Free Trial - No commitment, cancel anytime.</span>
             </div>
 
-            <div class="plan-details">
-                <h3><?php echo $plan['plan_name']; ?> Plan</h3>
-                <p style="color: #6b7280;">
-                    <?php echo $billingCycle === 'annual' ? 'Annual' : 'Monthly'; ?> Billing
-                </p>
-
+            <div class="plan-summary-card">
+                <div class="plan-summary-header">
+                    <h3><?php echo htmlspecialchars($plan['plan_name']); ?> Plan</h3>
+                    <span style="font-weight: 500; color: var(--text-secondary);"><?php echo $billingCycle === 'annual' ? 'Annual' : 'Monthly'; ?> Billing</span>
+                </div>
+                
                 <ul class="features-list">
                     <?php 
                     $features = json_decode($plan['features'], true);
@@ -297,41 +298,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                     ?>
                         <li>
                             <i class="fas fa-check-circle"></i>
-                            <?php echo $feature; ?>
+                            <?php echo htmlspecialchars($feature); ?>
                         </li>
                     <?php endforeach; ?>
                 </ul>
             </div>
+            
+            <div style="margin-bottom: 30px;">
+                <h4 style="margin-bottom: 15px; color: var(--text-primary);">Secure Payment</h4>
+                <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
+                    We use industry-standard encryption to protect your data. Your payment information is processed securely by Razorpay.
+                </p>
+            </div>
 
-            <?php if ($hasUsedTrial): ?>
-                <!-- Upgrading / Re-subscribing: Payment Only -->
-                 <div style="background: #fffbeb; color: #92400e; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
-                    <i class="fas fa-info-circle"></i>
-                    You have already used your free trial. Please proceed to payment.
-                </div>
-                <button class="btn" onclick="initiatePayment()">
-                    <i class="fas fa-lock"></i>
-                    Pay ₹<?php echo number_format($price, 2); ?>
-                </button>
-            <?php else: ?>
-                <!-- New User: Free Trial -->
-                <button class="btn btn-trial" onclick="startTrial()">
-                    <i class="fas fa-rocket"></i>
-                    Start Free Trial
-                </button>
-            <?php endif; ?>
-
-            <div class="security-note">
-                <i class="fas fa-lock"></i>
-                Your data is secure and encrypted
+             <div class="secure-badge">
+                <i class="fas fa-lock" style="color: var(--success-color);"></i>
+                SSL Encrypted Payment
             </div>
         </div>
 
         <div class="checkout-sidebar">
-            <h3 style="margin-bottom: 20px;">Order Summary</h3>
+            <h3 style="margin-bottom: 20px; font-size: 1.2rem; color: var(--text-primary);">Order Summary</h3>
 
             <div class="summary-row">
-                <span><?php echo $plan['plan_name']; ?> Plan</span>
+                <span><?php echo htmlspecialchars($plan['plan_name']); ?> Plan</span>
                 <span>₹<?php echo number_format($price, 2); ?></span>
             </div>
 
@@ -347,34 +337,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
             </div>
             <?php endif; ?>
 
-            <div class="order-summary">
-                <div class="summary-row">
-                    <span>Due Today</span>
-                    <?php if ($subscription->hasUsedTrial($userId)): ?>
-                        <span style="font-weight: 600; color: #1f2937;">₹<?php echo number_format($price, 2); ?></span>
-                    <?php else: ?>
-                        <span style="color: #10b981; font-weight: 600;">₹0.00</span>
-                    <?php endif; ?>
-                </div>
-
-                <?php if (!$subscription->hasUsedTrial($userId)): ?>
-                <div class="summary-row total">
-                    <span>Due After Trial</span>
+            <div class="summary-row total">
+                <span>Due Today</span>
+                <?php if ($subscription->hasUsedTrial($userId)): ?>
                     <span>₹<?php echo number_format($price, 2); ?></span>
-                </div>
+                <?php else: ?>
+                    <span style="color: var(--success-color);">₹0.00</span>
                 <?php endif; ?>
             </div>
+            
+            <?php if (!$subscription->hasUsedTrial($userId)): ?>
+            <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary); text-align: right;">
+                Then ₹<?php echo number_format($price, 2); ?>/<?php echo $billingCycle === 'monthly' ? 'mo' : 'yr'; ?>
+            </div>
+            <?php endif; ?>
 
-            <div style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; font-size: 0.85rem; color: #1e40af;">
-                <i class="fas fa-info-circle"></i>
-                <?php if ($subscription->hasUsedTrial($userId)): ?>
-                    Secure payment processed by Razorpay.
-                <?php else: ?>
-                    You won't be charged until your trial ends. Cancel anytime.
-                <?php endif; ?>
+            <?php if ($hasUsedTrial): ?>
+                <!-- Upgrading / Re-subscribing: Payment Only -->
+                <button class="btn-pay" onclick="initiatePayment()">
+                    <i class="fas fa-credit-card"></i>
+                    Pay ₹<?php echo number_format($price, 2); ?>
+                </button>
+            <?php else: ?>
+                <!-- New User: Free Trial -->
+                <button class="btn-pay trial" onclick="startTrial()">
+                    <i class="fas fa-rocket"></i>
+                    Start Free Trial
+                </button>
+            <?php endif; ?>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 0.8rem; color: var(--text-light);">
+                By continuing, you agree to our <a href="#" style="color: var(--primary-color);">Terms of Service</a>.
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <?php require_once '../../includes/public_footer.php'; ?>
 
     <form method="POST" id="paymentForm">
         <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
@@ -408,7 +407,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
                     "email": "<?php echo $_SESSION['pending_user_email'] ?? $_SESSION['email'] ?? ''; ?>"
                 },
                 "theme": {
-                    "color": "#667eea"
+                    "color": "#4f46e5"
                 }
             };
             var rzp = new Razorpay(options);

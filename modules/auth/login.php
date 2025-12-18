@@ -288,7 +288,7 @@ $auth = new Auth();
     <!-- Left Side -->
     <div class="split-left">
         <div class="brand-content">
-            <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg" alt="Acculynce Logo" class="brand-logo">
+            <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce Logo" class="brand-logo">
             <h1 class="brand-heading">The Operating System for Modern Business</h1>
             <p class="brand-text">Unify your entire organization on one platform. Manage inventory, finance, and people with enterprise-grade precision.</p>
         </div>
@@ -299,7 +299,7 @@ $auth = new Auth();
         <div class="auth-wrapper">
             <!-- Mobile Logo (visible only on small screens) -->
             <div class="mobile-logo">
-                <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg" alt="Acculynce">
+                <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce">
             </div>
 
             <div class="auth-header">

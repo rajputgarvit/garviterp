@@ -355,7 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Left Side -->
     <div class="split-left">
         <div class="brand-content">
-            <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg" alt="Acculynce Logo" class="brand-logo">
+            <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce Logo" class="brand-logo">
             <h1 class="brand-heading">Start your 14-day free trial</h1>
             <p class="brand-text">Join thousands of growing businesses managing their operations on Acculynce.</p>
         </div>
@@ -365,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="split-right">
         <div class="auth-wrapper">
              <div class="mobile-logo">
-                <img src="https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg" alt="Acculynce">
+                <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce">
             </div>
 
             <div class="auth-header">
