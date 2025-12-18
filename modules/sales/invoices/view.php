@@ -355,7 +355,18 @@ $amountInWords = 'Rupees ' . trim(numberToWords(intval($invoice['total_amount'])
                                         <td class="text-bold bg-gray">Due Date:</td>
                                         <td><?php echo date('d-M-Y', strtotime($invoice['due_date'])); ?></td>
                                     </tr>
-                                    
+                                    <?php if (!empty($invoice['courier_name'])): ?>
+                                    <tr>
+                                        <td class="text-bold bg-gray">Courier:</td>
+                                        <td><?php echo htmlspecialchars($invoice['courier_name']); ?></td>
+                                    </tr>
+                                    <?php endif; ?>
+                                    <?php if (!empty($invoice['tracking_id'])): ?>
+                                    <tr>
+                                        <td class="text-bold bg-gray">Tracking:</td>
+                                        <td><?php echo htmlspecialchars($invoice['tracking_id']); ?></td>
+                                    </tr>
+                                    <?php endif; ?>
                                 </table>
                             </td>
                         </tr>
@@ -584,6 +595,12 @@ $amountInWords = 'Rupees ' . trim(numberToWords(intval($invoice['total_amount'])
                         <tr>
                             <td class="text-right bg-gray text-bold" style="border-left: none;">Total Tax</td>
                             <td class="text-right text-bold" style="border-right: none;"><?php echo number_format($totalTax, 2); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <?php if (isset($invoice['shipping_charges']) && $invoice['shipping_charges'] > 0): ?>
+                        <tr>
+                            <td class="text-right bg-gray" style="border-left: none;">Shipping Charges</td>
+                            <td class="text-right" style="border-right: none;"><?php echo number_format($invoice['shipping_charges'], 2); ?></td>
                         </tr>
                         <?php endif; ?>
                         <?php if (isset($invoice['round_off_amount']) && $invoice['round_off_amount'] != 0): ?>

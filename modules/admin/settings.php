@@ -21,9 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $db->insert('system_settings', [
                 'setting_key' => 'maintenance_mode',
-                'setting_value' => $newStatus,
-                'category' => 'system',
-                'description' => 'Maintenance Mode status'
+                'setting_value' => $newStatus
             ]);
         }
         

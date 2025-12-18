@@ -5,53 +5,68 @@ require_once '../../classes/Auth.php';
 require_once '../../classes/Database.php';
 require_once '../../classes/Subscription.php';
 
-$auth = new Auth();
 $subscription = new Subscription();
 
-// Check if user is coming from checkout
-if (!isset($_SESSION['selected_plan'])) {
-    header('Location: ../auth/register.php');
-    exit;
-}
-
+// Check for user ID (either pending or logged in)
 $userId = $_SESSION['pending_user_id'] ?? $_SESSION['user_id'] ?? null;
 
 if (!$userId) {
-    header('Location: ../auth/register.php');
+    header('Location: select-plan.php');
     exit;
 }
 
-$planName = $_SESSION['selected_plan'];
-$billingCycle = $_SESSION['selected_billing'] ?? 'monthly';
+// Initialize DB connection to get company_id
+$db = Database::getInstance();
+$user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
+
+if (!$user) {
+    // User not found, redirect to registration or error page
+    header('Location: select-plan.php');
+    exit;
+}
+
+$companyId = $user['company_id'];
+
+$planName = $_GET['plan'] ?? '';
+$billingCycle = $_GET['billing'] ?? 'monthly';
+
+// Validate plan and billing cycle if necessary
+if (empty($planName)) {
+    header('Location: select-plan.php?error=No plan selected.');
+    exit;
+}
 
 try {
-    // Create trial subscription
-    $subscriptionId = $subscription->createSubscription($userId, $planName, $billingCycle);
+    // Create new trial subscription for COMPANY
+    $subscriptionId = $subscription->createSubscription($companyId, $planName, $billingCycle, 'trial', $userId);
     
-    // Clear session variables
+    // Clear session variables if they were used for selection
     unset($_SESSION['selected_plan']);
     unset($_SESSION['selected_billing']);
     
     // If it was a pending user (registration flow), log them in
     if (isset($_SESSION['pending_user_id'])) {
-        // Initialize DB connection here if not already done
-        $db = Database::getInstance();
 
         unset($_SESSION['pending_user_id']);
         unset($_SESSION['pending_user_email']); // Also clear pending email if it exists
         
-        $user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
-        if ($user) { // Ensure user is found before setting session
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['email'] = $user['email'];
-            $_SESSION['company_id'] = $user['company_id'];
-            
-            // Fetch roles
-            $roles = $db->fetchAll("SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?", [$userId]);
-            $_SESSION['roles'] = array_column($roles, 'name');
-        }
+            $user = $db->fetchOne("
+                SELECT u.*, GROUP_CONCAT(r.name) as roles 
+                FROM users u 
+                LEFT JOIN user_roles ur ON u.id = ur.user_id 
+                LEFT JOIN roles r ON ur.role_id = r.id 
+                WHERE u.id = ?
+                GROUP BY u.id
+            ", [$userId]);
+
+            if ($user) { // Ensure user is found before setting session
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['email'] = $user['email'];
+                $_SESSION['company_id'] = $user['company_id'];
+                $_SESSION['roles'] = $user['roles']; // Now a comma-separated string
+            }
         
         // Redirect to onboarding
         header('Location: ../auth/onboarding.php');

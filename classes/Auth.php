@@ -280,38 +280,70 @@ class Auth {
         );
         
         // Send email (simplified version - should use proper email service)
-        // Send email 
-        $verificationLink = BASE_URL . "modules/auth/verify-email.php?token=" . $token;
-        $subject = "Verify your Acculynce account";
-        $message = "
-        <html>
-        <head>
-            <style>
-                body { font-family: 'Inter', sans-serif; color: #333; line-height: 1.6; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
-                .btn { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; margin-top: 20px; }
-                .footer { margin-top: 30px; font-size: 12px; color: #666; text-align: center; }
-            </style>
-        </head>
-        <body>
+    // Send email 
+    $verificationLink = BASE_URL . "modules/auth/verify-email.php?token=" . $token;
+    $subject = "Verify your Acculynce account";
+    $logoUrl = "https://dev.acculynce.com/public/uploads/logos/logo_1_1765731868.svg";
+    
+    $message = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+        <title>Verify Email</title>
+        <style>
+            body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #1f2937; line-height: 1.6; margin: 0; padding: 0; background-color: #f3f4f6; }
+            .wrapper { width: 100%; background-color: #f3f4f6; padding: 40px 0; }
+            .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+            .header { background-color: #111827; padding: 30px; text-align: center; }
+            .header img { height: 40px; width: auto; }
+            .content { padding: 40px 30px; }
+            .h1 { font-size: 24px; font-weight: 700; margin-top: 0; margin-bottom: 16px; color: #111827; }
+            .text { font-size: 16px; color: #4b5563; margin-bottom: 24px; }
+            .btn-container { text-align: center; margin: 32px 0; }
+            .btn { display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; transition: background-color 0.2s; }
+            .btn:hover { background-color: #1d4ed8; }
+            .footer { background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; }
+            .footer-text { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+            .link { color: #2563eb; text-decoration: none; }
+        </style>
+    </head>
+    <body>
+        <div class='wrapper'>
             <div class='container'>
-                <h2>Verify your email address</h2>
-                <p>Thanks for getting started with " . APP_NAME . "! We want to make sure it's really you.</p>
-                <p>Please click the button below to verify your email address.</p>
-                <a href='$verificationLink' class='btn'>Verify Email Address</a>
-                <p style='margin-top: 20px; font-size: 13px; color: #666;'>If you didn't create an account, you can safely ignore this email.</p>
+                <div class='header'>
+                    <img src='$logoUrl' alt='Acculynce Logo'>
+                </div>
+                <div class='content'>
+                    <h1 class='h1'>Verify your email address</h1>
+                    <p class='text'>Thanks for signing up for " . APP_NAME . "! We're excited to have you on board.</p>
+                    <p class='text'>Please verify your email address to get access to all features. Just click the button below:</p>
+                    
+                    <div class='btn-container'>
+                        <a href='$verificationLink' class='btn'>Verify Email Address</a>
+                    </div>
+                    
+                    <p class='text' style='margin-bottom: 0; font-size: 14px; color: #6b7280;'>
+                        If you didn't create an account, you can safely ignore this email. The link will expire in 24 hours.
+                    </p>
+                </div>
                 <div class='footer'>
-                    &copy; " . date('Y') . " " . APP_NAME . ". All rights reserved.
+                    <p class='footer-text'>&copy; " . date('Y') . " " . APP_NAME . ". All rights reserved.</p>
+                    <p class='footer-text'>
+                        <a href='" . BASE_URL . "' class='link'>Visit Website</a>
+                    </p>
                 </div>
             </div>
-        </body>
-        </html>
-        ";
+        </div>
+    </body>
+    </html>
+    ";
         
         // Use Mail class
         require_once __DIR__ . '/Mail.php';
         $mail = new Mail();
-        return $mail->send($email, $subject, $message, true);
+        return $mail->sendWithResend($email, $subject, $message);
     }
     
     /**
@@ -347,9 +379,16 @@ class Auth {
             return false;
         }
         
+        $user = $this->getCurrentUser();
+        $companyId = $user['company_id'];
+
+        if (!$companyId) {
+            return false; // Should not happen for valid users
+        }
+        
         require_once 'Subscription.php';
         $subscription = new Subscription();
-        return $subscription->hasActiveSubscription($_SESSION['user_id']);
+        return $subscription->hasActiveSubscription($companyId);
     }
     /**
      * Impersonate a user (Admin only)

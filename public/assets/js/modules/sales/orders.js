@@ -7,24 +7,8 @@ if (typeof window.rowIndex === 'undefined') {
     window.rowIndex = 1;
 }
 
-// Initialize Select2
-function initSelect2(element) {
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        element.select2({
-            width: '100%',
-            placeholder: 'Select Product',
-            allowClear: true
-        });
-    }
-}
-
 // Initialize function to set up event listeners
 function initializeOrderForm() {
-    // Initialize Select2 on existing elements
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        initSelect2($('.product-select'));
-    }
-
     // Handle Quick Add Product Form Submission
     const quickAddProductForm = document.getElementById('quickAddProductForm');
     if (quickAddProductForm) {
@@ -131,15 +115,6 @@ if (document.readyState === 'loading') {
 
 // Function to update all product dropdowns
 window.updateAllProductDropdowns = function () {
-    // Destroy Select2 instances
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        $('.product-select').each(function () {
-            if ($(this).data('select2')) {
-                $(this).select2('destroy');
-            }
-        });
-    }
-
     const selects = document.querySelectorAll('.product-select');
     selects.forEach(select => {
         const currentValue = select.value;
@@ -167,11 +142,6 @@ window.updateAllProductDropdowns = function () {
         // Restore selected value if it still exists
         select.value = currentValue;
     });
-
-    // Re-initialize Select2
-    if (typeof $ !== 'undefined' && $.fn.select2) {
-        initSelect2($('.product-select'));
-    }
 }
 
 window.openQuickAddModal = function () {
@@ -234,18 +204,6 @@ window.addRow = function () {
             }
         });
 
-        // Remove select2-hidden-accessible class and select2 container from the clone
-        const select = newRow.querySelector('select.product-select');
-        if (select) {
-            if (typeof $ !== 'undefined') {
-                $(select).next('.select2-container').remove();
-                $(select).removeClass('select2-hidden-accessible');
-                $(select).removeAttr('data-select2-id');
-                $(select).removeAttr('aria-hidden');
-                $(select).removeAttr('tabindex');
-            }
-        }
-
         // Update onchange handlers
         const productSelect = newRow.querySelector('.product-select');
         if (productSelect) {
@@ -258,11 +216,6 @@ window.addRow = function () {
         });
 
         tbody.appendChild(newRow);
-
-        // Initialize Select2 on the new row's select
-        if (select && typeof $ !== 'undefined' && $.fn.select2) {
-            initSelect2($(select));
-        }
 
         console.log('Row added successfully, new rowIndex:', rowIndex);
         rowIndex++;

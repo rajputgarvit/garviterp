@@ -8,44 +8,21 @@ $auth = new Auth();
 // Auth::enforceGlobalRouteSecurity() handles permissions.
 $user = $auth->getCurrentUser();
 
+require_once '../../classes/Analytics.php';
+
+$analytics = new Analytics();
+
 // Fetch stats
-$db = Database::getInstance();
-$totalUsers = $db->fetchOne("SELECT COUNT(*) as count FROM users")['count'];
-$activeSubs = $db->fetchOne("SELECT COUNT(*) as count FROM subscriptions WHERE status IN ('active', 'trial')")['count'];
-$totalRevenue = $db->fetchOne("SELECT SUM(amount) as total FROM payment_transactions WHERE status = 'success'")['total'] ?? 0;
-$recentUsers = $db->fetchAll("SELECT * FROM users ORDER BY created_at DESC LIMIT 5");
-// Calculate MRR and ARR
-$mrr = 0;
-$arr = 0;
-$activeSubscriptions = $db->fetchAll("SELECT plan_price, billing_cycle FROM subscriptions WHERE status = 'active'");
-foreach ($activeSubscriptions as $sub) {
-    if ($sub['billing_cycle'] === 'monthly') {
-        $mrr += $sub['plan_price'];
-        $arr += $sub['plan_price'] * 12;
-    } else {
-        $mrr += $sub['plan_price'] / 12;
-        $arr += $sub['plan_price'];
-    }
-}
+$totalUsers = $analytics->getTotalUsers();
+$activeSubs = $analytics->getActiveSubscriptions();
+$totalRevenue = $analytics->getTotalRevenue();
+$mrr = $analytics->getMRR();
+$churnRate = $analytics->getChurnRate();
 
-// User Growth (Last 6 Months)
-$userGrowth = $db->fetchAll("
-    SELECT 
-        DATE_FORMAT(created_at, '%Y-%m') as month,
-        COUNT(*) as count
-    FROM users
-    WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-    GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-    ORDER BY month ASC
-");
-
-// Subscription Distribution
-$subDistribution = $db->fetchAll("
-    SELECT plan_name, COUNT(*) as count 
-    FROM subscriptions 
-    WHERE status = 'active' 
-    GROUP BY plan_name
-");
+// Charts
+$userGrowth = $analytics->getUserGrowth();
+$subDistribution = $analytics->getSubscriptionDistribution();
+$recentUsers = $analytics->getRecentUsers();
 ?>
 
 <div class="stats-grid">
@@ -87,6 +64,16 @@ $subDistribution = $db->fetchAll("
         </div>
         <div class="stat-value">₹<?php echo number_format($mrr); ?></div>
         <div class="stat-label">Monthly Recurring Revenue (MRR)</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-icon red">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+        </div>
+        <div class="stat-value"><?php echo number_format($churnRate, 1); ?>%</div>
+        <div class="stat-label">Churn Rate</div>
     </div>
 </div>
 

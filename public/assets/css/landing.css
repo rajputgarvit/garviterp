@@ -778,28 +778,45 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 24px;
     padding: 40px;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    overflow: hidden;
+}
+
+.price-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    border-color: var(--primary-light);
 }
 
 .price-card.popular {
-    border-color: var(--primary-color);
-    box-shadow: var(--shadow-xl);
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 20px 40px rgba(79, 70, 229, 0.15);
     transform: scale(1.05);
     z-index: 2;
 }
 
+.price-card.popular:hover {
+    transform: scale(1.05) translateY(-8px);
+    box-shadow: 0 30px 60px rgba(79, 70, 229, 0.2);
+}
+
 .popular-badge {
     position: absolute;
-    top: -14px;
+    top: 0;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     background: var(--primary-color);
     color: white;
-    padding: 6px 16px;
+    padding: 8px 20px;
     border-radius: 100px;
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    z-index: 10;
+    white-space: nowrap;
 }
 
 .plan-name {

@@ -3,6 +3,7 @@
 require_once '../../../config/config.php';
 require_once '../../../classes/Auth.php';
 require_once '../../../classes/Database.php';
+require_once '../../../classes/StockManager.php';
 
 $auth = new Auth();
 $auth->requireLogin();
@@ -11,8 +12,8 @@ $user = $auth->getCurrentUser();
 $db = Database::getInstance();
 
 // Fetch warehouses and products for dropdowns
-$warehouses = $db->fetchAll("SELECT id, name, code FROM warehouses WHERE is_active = 1 ORDER BY name");
-$products = $db->fetchAll("SELECT id, name, product_code FROM products WHERE is_active = 1 ORDER BY name");
+$warehouses = $db->fetchAll("SELECT id, name, code FROM warehouses WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
+$products = $db->fetchAll("SELECT id, name, product_code FROM products WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
 
 // Pre-select product if passed in URL
 $selectedProductId = $_GET['product_id'] ?? '';
@@ -27,35 +28,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $productId = $_POST['product_id'];
         $quantity = floatval($_POST['quantity']);
         $remarks = $_POST['remarks'];
-        
-        // Prevent duplicate submissions (check for same transaction within last 10 seconds)
-        // Using transaction_date as per schema check
-        $lastTx = $db->fetchOne(
-            "SELECT transaction_date FROM stock_transactions 
-             WHERE product_id = ? AND warehouse_id = ? AND quantity = ? AND transaction_type = ? AND created_by = ? 
-             ORDER BY id DESC LIMIT 1",
-            [$productId, $warehouseId, $quantity, $transactionType, $user['id']]
-        );
 
-        if ($lastTx && (time() - strtotime($lastTx['transaction_date']) < 10)) {
-            // Duplicate detected - rollback and redirect as success to avoid confusion
-            $db->rollback();
-            header("Location: index.php?success=Stock adjusted successfully");
-            exit;
+        // Initialize StockManager
+        $stockManager = new StockManager();
+        
+        if ($transactionType === 'IN') {
+            $stockManager->addStock(
+                $productId, 
+                $warehouseId, 
+                $quantity, 
+                'Manual Adjustment', 
+                null, 
+                $remarks, 
+                $user['id'], 
+                $user['company_id']
+            );
+        } else {
+            // Validate stock for OUT transaction
+            try {
+                $stockManager->removeStock(
+                    $productId, 
+                    $warehouseId, 
+                    $quantity, 
+                    'Manual Adjustment', 
+                    null, 
+                    $remarks, 
+                    $user['id'], 
+                    $user['company_id']
+                );
+            } catch (Exception $e) {
+                // If it's our insufficient stock exception, we want to catch it here
+                throw $e;
+            }
         }
-        
-        // Insert stock transaction
-        $db->insert('stock_transactions', [
-            'transaction_type' => $transactionType,
-            'product_id' => $productId,
-            'warehouse_id' => $warehouseId,
-            'quantity' => $quantity,
-            'reference_type' => 'Manual Adjustment',
-            'remarks' => $remarks,
-            'created_by' => $user['id']
-        ]);
-        
-        // Stock balance is updated automatically via database trigger 'after_stock_transaction_insert'
         
         $db->commit();
         header("Location: index.php?success=Stock adjusted successfully");

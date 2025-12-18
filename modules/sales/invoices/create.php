@@ -42,7 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'status' => 'Draft',
             'notes' => $_POST['notes'] ?? '',
             'created_by' => $user['id'],
-            'company_id' => $user['company_id']
+            'company_id' => $user['company_id'],
+            'company_id' => $user['company_id'],
+            'courier_name' => $_POST['courier_name'] ?? null,
+            'tracking_id' => $_POST['tracking_id'] ?? null,
+            'shipping_charges' => floatval($_POST['shipping_charges'] ?? 0)
         ];
         
         $invoiceId = $db->insert('invoices', $invoiceData);
@@ -121,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             'invoice',
                             $invoiceId,
                             'Sale from invoice ' . $_POST['invoice_number'],
-                            $user['id']
+                            $user['id'],
+                            $user['company_id']
                         );
                     } catch (Exception $e) {
                         // Log stock error but don't fail invoice creation
@@ -133,8 +138,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         // Update invoice totals
         $additionalDiscount = floatval($_POST['discount_amount'] ?? 0);
+        $shippingCharges = floatval($_POST['shipping_charges'] ?? 0);
         
-        $totalAmountRaw = ($subtotal + $totalTax) - $additionalDiscount;
+        $totalAmountRaw = ($subtotal + $totalTax + $shippingCharges) - $additionalDiscount;
         $totalAmountRounded = round($totalAmountRaw);
         $roundOffAmount = $totalAmountRounded - $totalAmountRaw;
         
@@ -143,7 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'discount_amount' => $totalDiscount + $additionalDiscount,
             'tax_amount' => $totalTax,
             'round_off_amount' => $roundOffAmount,
-            'total_amount' => $totalAmountRounded
+            'total_amount' => $totalAmountRounded,
+            'shipping_charges' => $shippingCharges
         ], 'id = ? AND company_id = ?', [$invoiceId, $user['company_id']]);
         
         // Handle Payment
@@ -160,6 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $paymentId = $db->insert('payments', [
                     'company_id' => $user['company_id'],
                     'invoice_id' => $invoiceId,
+                    'payment_number' => $paymentNumber,
                     'payment_date' => $_POST['invoice_date'], // Use invoice date as payment date
                     'amount' => $paymentAmount,
                     'payment_method' => $_POST['payment_method'],
@@ -205,9 +213,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Get customers and products for dropdowns
+// Get available customers and products for dropdowns
 $customers = $db->fetchAll("SELECT id, customer_code, company_name, contact_person FROM customers WHERE is_active = 1 AND company_id = ? ORDER BY company_name", [$user['company_id']]);
 $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rate, hsn_code, has_serial_number, has_warranty, has_expiry_date FROM products WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
+$salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount FROM sales_orders WHERE status != 'Cancelled' AND company_id = ? ORDER BY order_date DESC LIMIT 50", [$user['company_id']]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -741,6 +750,19 @@ $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rat
                         
                         <!-- Invoice Details Grid -->
                         <div class="form-grid">
+                            <div class="form-field" style="grid-column: 1 / -1;">
+                                <label>Load from Sales Order</label>
+                                <select id="salesOrderSelect" onchange="loadSalesOrderData(this)">
+                                    <option value="">Select Sales Order to populate data...</option>
+                                    <?php foreach ($salesOrders as $order): ?>
+                                        <option value="<?php echo $order['id']; ?>">
+                                            <?php echo htmlspecialchars($order['order_number'] . ' (' . date('d-M-Y', strtotime($order['order_date'])) . ') - ₹' . number_format($order['total_amount'], 2)); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small>Select a Sales Order to auto-fill customer and items.</small>
+                            </div>
+                            
                             <div class="form-field">
                                 <label>Invoice Number *</label>
                                 <input type="text" name="invoice_number" value="<?php echo $nextInvoiceNumber; ?>" readonly>
@@ -773,7 +795,57 @@ $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rat
                             
                             <div class="form-field">
                                 <label>Due Date</label>
-                                <input type="date" name="due_date" value="<?php echo date('Y-m-d', strtotime('+30 days')); ?>">
+                                <input type="date" name="due_date" value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="border-top: 1px solid var(--border-color); padding-top: 2rem;">
+                             <div class="form-field">
+                                <label>Courier Name</label>
+                                <input type="text" name="courier_name" placeholder="e.g. FedEx, DHL, BlueDart">
+                            </div>
+                            <div class="form-field">
+                                <label>Tracking ID</label>
+                                <input type="text" name="tracking_id" placeholder="Enter tracking number">
+                            </div>
+                        </div>
+
+                        <!-- Payment Option -->
+                        <div class="form-grid" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1rem;">
+                            <div class="form-field" style="grid-column: 1 / -1;">
+                                <label style="display: flex; align-items: center; gap: 0.75rem; font-weight: 500; font-size: 1.1em; color: var(--text-color); cursor: pointer;">
+                                    <input type="checkbox" name="add_payment" id="add_payment" value="1" onchange="togglePaymentDetails()" style="width: 1.2rem; height: 1.2rem;">
+                                    Add Payment to Invoice
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="payment_details" style="display: none; background: var(--bg-light); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 2rem;">
+                            <div class="form-grid">
+                                <div class="form-field">
+                                    <label>Amount Paying <span class="required">*</span></label>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <input type="number" step="0.01" name="payment_amount" id="payment_amount" placeholder="0.00" style="flex: 1;">
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; white-space: nowrap; font-size: 0.9em; cursor: pointer;">
+                                            <input type="checkbox" id="pay_full_amount" checked onchange="toggleFullPayment()"> Pay Full
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-field">
+                                    <label>Payment Method <span class="required">*</span></label>
+                                    <select name="payment_method" id="payment_method">
+                                        <option value="Cash">Cash</option>
+                                        <option value="UPI">UPI</option>
+                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Cheque">Cheque</option>
+                                        <option value="Card">Card Credit/Debit</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label>Payment Notes</label>
+                                    <input type="text" name="payment_notes" id="payment_notes" placeholder="Transaction ID / Reference No.">
+                                </div>
                             </div>
                         </div>
                         
@@ -884,6 +956,10 @@ $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rat
                                         <label>Tax</label>
                                         <span id="taxDisplay">₹0.00</span>
                                     </div>
+                                    <div class="total-row">
+                                        <label>Shipping Charges</label>
+                                        <input type="number" name="shipping_charges" id="shippingCharges" value="0" step="0.01" min="0" onchange="calculateTotals()">
+                                    </div>
                                     <div class="summary-row total-row">
                                         <span>Total</span>
                                         <span id="grandTotalDisplay">₹0.00</span>
@@ -896,47 +972,7 @@ $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rat
                             </div>
                         </div>
 
-                        <!-- Payment Details Section -->
-                        <div class="card" style="margin-top: 20px;">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0;">
-                                        <input type="checkbox" name="add_payment" id="add_payment" value="1" onchange="togglePaymentDetails()">
-                                        Add Payment
-                                    </label>
-                                </h3>
-                            </div>
-                            <div class="card-body" id="payment_details" style="display: none;">
-                                <div class="form-row">
-                                    <div class="form-group col-md-4">
-                                        <label for="payment_amount">Amount Paying <span class="required">*</span></label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.01" name="payment_amount" id="payment_amount" class="form-control">
-                                            <div class="input-group-append">
-                                                <label class="input-group-text" style="background: none; border: none;">
-                                                    <input type="checkbox" id="pay_full_amount" checked onchange="toggleFullPayment()"> Full
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group col-md-4">
-                                        <label for="payment_method">Payment Method <span class="required">*</span></label>
-                                        <select name="payment_method" id="payment_method" class="form-control">
-                                            <option value="Cash">Cash</option>
-                                            <option value="UPI">UPI</option>
-                                            <option value="Bank Transfer">Bank Transfer</option>
-                                            <option value="Cheque">Cheque</option>
-                                            <option value="Card">Card</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group col-md-4">
-                                        <label for="payment_notes">Payment Notes</label>
-                                        <input type="text" name="payment_notes" id="payment_notes" class="form-control" placeholder="Transaction ID / Cheque No.">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
 
                         <!-- Form Actions -->
                         <div class="form-actions">
@@ -1074,7 +1110,6 @@ $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rat
         </div>
     </div>
 
-    <script>
     <script>
         // Pass PHP data to JS
         window.productsData = <?php echo json_encode($products); ?>;
