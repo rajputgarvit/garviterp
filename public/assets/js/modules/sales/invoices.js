@@ -2,6 +2,8 @@
  * Invoices Module JavaScript
  */
 
+console.log('Invoices module loaded');
+
 // Initialize variables
 if (typeof window.rowIndex === 'undefined') {
     window.rowIndex = 1;
@@ -386,7 +388,10 @@ window.calculateTotals = function () {
     const additionalDiscountInput = document.getElementById('discountAmount');
     let additionalDiscount = parseFloat(additionalDiscountInput.value) || 0;
 
-    const maxDiscount = subtotal + totalTax;
+    const shippingChargesInput = document.getElementById('shippingCharges');
+    let shippingCharges = parseFloat(shippingChargesInput ? shippingChargesInput.value : 0) || 0;
+
+    const maxDiscount = subtotal + totalTax + shippingCharges;
 
     if (additionalDiscount > maxDiscount) {
         alert('Discount cannot exceed the total amount.');
@@ -396,7 +401,7 @@ window.calculateTotals = function () {
 
 
     const totalDiscount = totalItemDiscount + additionalDiscount;
-    const finalAmountRaw = subtotal + totalTax - additionalDiscount;
+    const finalAmountRaw = subtotal + totalTax + shippingCharges - additionalDiscount;
     const finalAmountRounded = Math.round(finalAmountRaw);
     const roundOff = finalAmountRounded - finalAmountRaw;
 
@@ -456,4 +461,152 @@ window.checkSerialAvailability = function (input, excludeInvoiceId = null) {
         .catch(error => {
             console.error('Error checking serial number:', error);
         });
+}
+
+window.loadSalesOrderData = function (select) {
+    const orderId = select.value;
+    if (!orderId) return;
+
+    if (!confirm('This will replace current items and customer details. Continue?')) {
+        select.value = '';
+        return;
+    }
+
+    fetch('../../../ajax/get-sales-order.php?id=' + orderId)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const order = result.order;
+                const items = result.items;
+                const customer = result.customer;
+
+                // Set Customer
+                const customerSelect = document.querySelector('select[name="customer_id"]');
+                if (customerSelect) {
+                    customerSelect.value = order.customer_id;
+                    if (window.jQuery && $(customerSelect).data('select2')) { // Trigger change if using Select2
+                        $(customerSelect).trigger('change');
+                    }
+                }
+
+                // Set Tracking Details
+                const courierInput = document.querySelector('input[name="courier_name"]');
+                if (courierInput && order.courier_name) courierInput.value = order.courier_name;
+
+                const trackingInput = document.querySelector('input[name="tracking_id"]');
+                if (trackingInput && order.tracking_id) trackingInput.value = order.tracking_id;
+
+                // Set Shipping Charges
+                const shippingInput = document.getElementById('shippingCharges');
+                if (shippingInput) {
+                    shippingInput.value = order.shipping_charges || 0;
+                }
+
+                // Clear existing items
+                const tbody = document.getElementById('itemsBody');
+                tbody.innerHTML = ''; // Start fresh
+
+                // Rebuild Items
+                let html = '';
+                items.forEach((item, index) => {
+                     // We need to generate product options for each select
+                     // Using window.productsData which should be available
+                    let productOptions = '<option value="">Select Product</option>';
+                    if (window.productsData) {
+                        window.productsData.forEach(p => {
+                            const selected = p.id == item.product_id ? 'selected' : '';
+                            productOptions += `<option value="${p.id}" 
+                                data-price="${p.selling_price}" 
+                                data-tax="${p.tax_rate}" 
+                                data-name="${p.name}" 
+                                data-has-serial="${p.has_serial_number}" 
+                                data-has-warranty="${p.has_warranty}" 
+                                data-has-expiry="${p.has_expiry_date}"
+                                ${selected}>
+                                ${p.product_code} - ${p.name}
+                                </option>`;
+                        });
+                    }
+
+                     const rowHtml = `
+                        <tr class="item-row">
+                            <td>
+                                <div style="display: flex; gap: 5px;">
+                                    <select name="items[${index}][product_id]" class="product-select" onchange="updateProductDetails(this, ${index})" required style="flex: 1;">
+                                        ${productOptions}
+                                    </select>
+                                    <button type="button" class="btn btn-success" style="width: 38px; height: 38px; padding: 0;" onclick="openQuickAddModal()" title="Quick Add Product">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td><textarea name="items[${index}][description]" class="item-description" rows="1">${item.description || ''}</textarea></td>
+                            <td><input type="number" name="items[${index}][quantity]" class="item-quantity" value="${item.quantity}" step="0.01" min="0" onchange="calculateRow(this)" required></td>
+                            <td><input type="number" name="items[${index}][unit_price]" class="item-price" value="${item.unit_price}" step="0.01" min="0" onchange="calculateRow(this)" required></td>
+                            <td><input type="number" name="items[${index}][discount_percent]" class="item-discount" value="${item.discount_percent || 0}" step="0.01" min="0" max="100" onchange="calculateRow(this)"></td>
+                            <td>
+                                <select name="items[${index}][tax_rate]" class="item-tax" onchange="calculateRow(this)">
+                                    <option value="0" ${parseFloat(item.tax_rate) == 0 ? 'selected' : ''}>0%</option>
+                                    <option value="5" ${parseFloat(item.tax_rate) == 5 ? 'selected' : ''}>5%</option>
+                                    <option value="12" ${parseFloat(item.tax_rate) == 12 ? 'selected' : ''}>12%</option>
+                                    <option value="18" ${parseFloat(item.tax_rate) == 18 ? 'selected' : ''}>18%</option>
+                                    <option value="28" ${parseFloat(item.tax_rate) == 28 ? 'selected' : ''}>28%</option>
+                                </select>
+                            </td>
+                            <td><input type="number" class="item-total" value="${item.line_total}" step="0.01" readonly style="background-color: #f0f0f0;"></td>
+                            <td>
+                                <input type="hidden" name="items[${index}][serial_number]" class="item-serial" value="">
+                                <input type="hidden" name="items[${index}][warranty_period]" class="item-warranty" value="">
+                                <input type="hidden" name="items[${index}][expiry_date]" class="item-expiry" value="">
+                                <button type="button" class="btn btn-danger" onclick="removeRow(this)"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    html += rowHtml;
+                });
+                
+                tbody.innerHTML = html;
+                window.rowIndex = items.length;
+                
+                // Recalculate totals
+                calculateTotals();
+                
+            } else {
+                alert('Error loading order: ' + result.message);
+                select.value = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load sales order.');
+            select.value = '';
+        });
+}
+
+window.togglePaymentDetails = function() {
+    const paymentDetails = document.getElementById('payment_details');
+    const checkbox = document.getElementById('add_payment');
+    
+    if (checkbox.checked) {
+        paymentDetails.style.display = 'block';
+        toggleFullPayment(); // Initial calculation
+    } else {
+        paymentDetails.style.display = 'none';
+        // Clear value when unchecked
+        document.getElementById('payment_amount').value = '';
+    }
+}
+
+window.toggleFullPayment = function() {
+    const isFull = document.getElementById('pay_full_amount').checked;
+    const amountInput = document.getElementById('payment_amount');
+    
+    if (isFull) {
+        amountInput.readOnly = true;
+        // Trigger calculation to update the amount
+        calculateTotals();
+    } else {
+        amountInput.readOnly = false;
+        amountInput.focus();
+    }
 }

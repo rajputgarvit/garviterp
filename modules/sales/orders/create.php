@@ -41,7 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'payment_status' => 'Unpaid',
             'notes' => $_POST['notes'] ?? '',
             'created_by' => $user['id'],
-            'company_id' => $user['company_id']
+            'company_id' => $user['company_id'],
+            'courier_name' => $_POST['courier_name'] ?? null,
+            'tracking_id' => $_POST['tracking_id'] ?? null
         ];
         
         $orderId = $db->insert('sales_orders', $orderData);
@@ -700,6 +702,16 @@ $quotations = $db->fetchAll("SELECT id, quotation_number FROM quotations WHERE s
                             <div class="form-field">
                                 <label>Expected Delivery Date</label>
                                 <input type="date" name="expected_delivery_date" value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>">
+                            </div>
+
+                            <div class="form-field">
+                                <label>Courier Name</label>
+                                <input type="text" name="courier_name" placeholder="e.g. FedEx, DHL">
+                            </div>
+
+                            <div class="form-field">
+                                <label>Tracking ID</label>
+                                <input type="text" name="tracking_id" placeholder="Enter tracking number">
                             </div>
                             
                             <div class="form-field">

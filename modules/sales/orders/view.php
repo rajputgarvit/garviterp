@@ -212,6 +212,18 @@ $amountInWords = 'Rupees ' . trim(numberToWords(intval($order['total_amount'])))
                                         <td class="text-bold bg-gray">Valid Until:</td>
                                         <td><?php echo date('d-M-Y', strtotime($order['expected_delivery_date'])); ?></td>
                                     </tr>
+                                    <?php if (!empty($order['courier_name'])): ?>
+                                    <tr>
+                                        <td class="text-bold bg-gray">Courier:</td>
+                                        <td><?php echo htmlspecialchars($order['courier_name']); ?></td>
+                                    </tr>
+                                    <?php endif; ?>
+                                    <?php if (!empty($order['tracking_id'])): ?>
+                                    <tr>
+                                        <td class="text-bold bg-gray">Tracking:</td>
+                                        <td><?php echo htmlspecialchars($order['tracking_id']); ?></td>
+                                    </tr>
+                                    <?php endif; ?>
                                 </table>
                             </td>
                         </tr>
@@ -319,6 +331,12 @@ $amountInWords = 'Rupees ' . trim(numberToWords(intval($order['total_amount'])))
                         <tr>
                             <td class="text-right bg-gray" style="border-left: none;">Tax</td>
                             <td class="text-right" style="border-right: none;"><?php echo number_format($order['tax_amount'], 2); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <?php if (isset($order['shipping_charges']) && $order['shipping_charges'] > 0): ?>
+                        <tr>
+                            <td class="text-right bg-gray" style="border-left: none;">Shipping Charges</td>
+                            <td class="text-right" style="border-right: none;"><?php echo number_format($order['shipping_charges'], 2); ?></td>
                         </tr>
                         <?php endif; ?>
                         <tr>
