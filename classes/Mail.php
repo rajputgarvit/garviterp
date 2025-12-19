@@ -1,9 +1,12 @@
 <?php
 class Mail {
-    public function sendWithResend($to, $subject, $htmlBody) {
+    public function sendWithResend($to, $subject, $htmlBody, $customFromName = null, $customFromEmail = null) {
         $apiKey = defined('RESEND_API_KEY') ? RESEND_API_KEY : '';
-        $fromEmail = defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : 'accounts@acculynce.com';
-        $fromName = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'Acculynce Accounts';
+        $defaultEmail = defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : 'accounts@acculynce.com';
+        $defaultName = defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'Acculynce Accounts';
+        
+        $fromEmail = $customFromEmail ?? $defaultEmail;
+        $fromName = $customFromName ?? $defaultName;
         
         $fromHeader = "$fromName <$fromEmail>";
 

@@ -153,6 +153,11 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                         <i class="fas fa-chart-bar"></i>
                         <span>Reports</span>
                     </a>
+
+                    <a href="<?php echo MODULES_URL; ?>/admin/tickets.php" class="menu-item <?php echo ($currentPage === 'tickets') ? 'active' : ''; ?>">
+                        <i class="fas fa-headset"></i>
+                        <span>Ticket Management</span>
+                    </a>
                 </div>
 
                 <div class="menu-section">

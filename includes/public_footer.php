@@ -33,7 +33,7 @@
                     <li><a href="<?php echo BASE_URL; ?>public/pages/about.php">About</a></li>
                     <li><a href="<?php echo BASE_URL; ?>public/pages/careers.php">Careers</a></li>
                     <li><a href="<?php echo BASE_URL; ?>public/pages/blog.php">Blog</a></li>
-                    <li><a href="<?php echo BASE_URL; ?>public/pages/contact.php">Contact</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>public/contact.php">Contact</a></li>
                 </ul>
             </div>
             <div class="footer-col">
