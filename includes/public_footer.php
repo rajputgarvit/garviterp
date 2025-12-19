@@ -49,8 +49,8 @@
         <div class="footer-bottom">
             <p>&copy; <span id="currentYear"></span> Acculynce Inc. All rights reserved.</p>
             <div class="legal-links">
-                <a href="privacy-policy.html" style="margin-right: 20px;">Privacy Policy</a>
-                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="<?php echo BASE_URL; ?>public/pages/privacy-policy.php" style="margin-right: 20px;">Privacy Policy</a>
+                <a href="<?php echo BASE_URL; ?>public/pages/terms-of-service.php">Terms of Service</a>
             </div>
         </div>
     </div>
