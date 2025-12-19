@@ -19,6 +19,12 @@ $pageTitle = isset($pageTitle) ? $pageTitle : 'Admin Panel';
 // Fetch branding settings
 $db = Database::getInstance();
 $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM company_settings WHERE id = ? LIMIT 1", [$currentUser['company_id'] ?? 0]);
+
+// Fetch Notification Counts
+$inqCount = $db->fetchOne("SELECT COUNT(*) as count FROM contact_requests WHERE status = 'New'");
+$tktCount = $db->fetchOne("SELECT COUNT(*) as count FROM support_tickets WHERE status = 'Open'");
+$inquiryCount = $inqCount['count'] ?? 0;
+$ticketCount = $tktCount['count'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,14 +160,24 @@ $brandingSettings = $db->fetchOne("SELECT app_name, logo_path, theme_color FROM 
                         <span>Reports</span>
                     </a>
 
-                    <a href="<?php echo MODULES_URL; ?>/admin/tickets.php" class="menu-item <?php echo ($currentPage === 'tickets') ? 'active' : ''; ?>">
-                        <i class="fas fa-headset"></i>
-                        <span>Ticket Management</span>
+                    <a href="<?php echo MODULES_URL; ?>/admin/tickets.php" class="menu-item d-flex align-items-center justify-content-between pe-3 <?php echo ($currentPage === 'tickets') ? 'active' : ''; ?>">
+                        <div>
+                            <i class="fas fa-headset"></i>
+                            <span>Ticket Management</span>
+                        </div>
+                        <?php if ($ticketCount > 0): ?>
+                            <span class="badge bg-danger rounded-pill"><?php echo $ticketCount; ?></span>
+                        <?php endif; ?>
                     </a>
 
-                    <a href="<?php echo MODULES_URL; ?>/admin/inquiries.php" class="menu-item <?php echo ($currentPage === 'inquiries') ? 'active' : ''; ?>">
-                        <i class="fas fa-envelope-open-text"></i>
-                        <span>Website Inquiries</span>
+                    <a href="<?php echo MODULES_URL; ?>/admin/inquiries.php" class="menu-item d-flex align-items-center justify-content-between pe-3 <?php echo ($currentPage === 'inquiries') ? 'active' : ''; ?>">
+                        <div>
+                            <i class="fas fa-envelope-open-text"></i>
+                            <span>Website Inquiries</span>
+                        </div>
+                        <?php if ($inquiryCount > 0): ?>
+                            <span class="badge bg-danger rounded-pill"><?php echo $inquiryCount; ?></span>
+                        <?php endif; ?>
                     </a>
                 </div>
 
