@@ -31,6 +31,14 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </button>
     </div>
     
+    <!-- New Create Button -->
+    <div class="create-btn-wrapper">
+        <a href="<?php echo MODULES_URL; ?>/sales/invoices/create.php" class="create-btn">
+            <span>+ Create Sales Invoice</span>
+            <i class="fas fa-chevron-down" style="font-size: 0.7em;"></i>
+        </a>
+    </div>
+    
     <nav class="sidebar-menu">
         <div class="menu-section">
             <div class="menu-section-title">Main</div>

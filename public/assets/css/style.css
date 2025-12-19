@@ -93,8 +93,9 @@ body {
 
 .sidebar {
     width: 250px;
-    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-    color: white;
+    background: #111827;
+    /* Dark Navy/Black */
+    color: #9ca3af;
     position: fixed;
     height: 100vh;
     overflow-y: auto;
@@ -248,11 +249,18 @@ body {
 /* Sidebar Menu Styles */
 .sidebar-header {
     padding: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 80px;
+}
+
+.sidebar-header h2 {
+    color: white !important;
+}
+
+.sidebar-header h2 span {
+    color: white !important;
 }
 
 .sidebar-menu {
@@ -269,40 +277,70 @@ body {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--text-secondary);
+    color: #6b7280;
     font-weight: 600;
-    opacity: 0.7;
 }
 
 .menu-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    color: #94a3b8;
-    /* Slate 400 */
+    padding: 10px 16px;
+    margin: 4px 12px;
+    color: #9ca3af;
     text-decoration: none;
     transition: all 0.2s;
-    border-left: 3px solid transparent;
+    border-radius: 8px;
+    border-left: none;
 }
 
 .menu-item:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: #1f2937;
     color: white;
     text-decoration: none;
 }
 
 .menu-item.active {
-    background: rgba(59, 130, 246, 0.1);
-    /* Primary color with opacity */
-    color: var(--primary-color);
-    border-left-color: var(--primary-color);
+    background: #374151;
+    /* Dark Grey/Blue active */
+    color: white;
+    font-weight: 500;
+    border-left: none;
+    /* Removed border */
 }
 
 .menu-item i {
     width: 20px;
     text-align: center;
     font-size: 1.1rem;
+    margin-right: 10px;
+}
+
+/* Create Invoice Button in Sidebar */
+.create-btn-wrapper {
+    padding: 16px;
+}
+
+.create-btn {
+    background-color: #eef2ff;
+    color: #4f46e5;
+    width: 100%;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.create-btn:hover {
+    background-color: #e0e7ff;
+    color: #4338ca;
+    text-decoration: none;
 }
 
 /* Top Header */

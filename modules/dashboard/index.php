@@ -44,7 +44,14 @@ $stats = [
     'pending_orders' => $db->fetchOne("SELECT COUNT(*) as count FROM sales_orders WHERE status IN ('Draft', 'Confirmed') AND company_id = ?", [$companyId])['count'] ?? 0,
     'pending_invoices' => $db->fetchOne("SELECT COUNT(*) as count FROM invoices WHERE status IN ('Draft', 'Sent') AND company_id = ?", [$companyId])['count'] ?? 0,
     'low_stock_items' => $db->fetchOne("SELECT COUNT(DISTINCT p.id) as count FROM products p JOIN stock_balance sb ON p.id = sb.product_id WHERE sb.available_quantity <= p.reorder_level AND p.company_id = ?", [$companyId])['count'] ?? 0,
-    'pending_leaves' => $db->fetchOne("SELECT COUNT(*) as count FROM leave_applications WHERE status = 'Pending' AND company_id = ?", [$companyId])['count'] ?? 0
+    'pending_leaves' => $db->fetchOne("SELECT COUNT(*) as count FROM leave_applications WHERE status = 'Pending' AND company_id = ?", [$companyId])['count'] ?? 0,
+    
+    // New Metrics for Dashboard Redesign
+    'pending_invoices_amount' => $db->fetchOne("SELECT SUM(balance_amount) as total FROM invoices WHERE status != 'Paid' AND status != 'Cancelled' AND company_id = ?", [$companyId])['total'] ?? 0,
+    // Attempt to fetch pending bills (Purchase Invoices). If table or column doesn't exist, this might fail, so we wrap or assume it works based on schema 
+    'pending_bills_amount' => $db->fetchOne("SELECT SUM(balance_amount) as total FROM purchase_invoices WHERE status != 'Paid' AND status != 'Cancelled' AND company_id = ?", [$companyId])['total'] ?? 0,
+    // Cash & Bank Balance
+    'cash_balance' => $db->fetchOne("SELECT SUM(current_balance) as total FROM bank_accounts WHERE is_active = 1 AND company_id = ?", [$companyId])['total'] ?? 0
 ];
 
 // Recent activities
@@ -72,12 +79,10 @@ $recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.inv
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <!-- Sidebar -->
-        <!-- Sidebar -->
-        <!-- Sidebar -->
-        <?php include INCLUDES_PATH . '/sidebar.php'; ?>
+        <aside class="sidebar">
+            <?php include INCLUDES_PATH . '/sidebar.php'; ?>
+        </aside>
         
-        <!-- Main Content -->
         <main class="main-content">
             <?php include INCLUDES_PATH . '/header.php'; ?>
             
@@ -120,7 +125,7 @@ $recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.inv
                         </div>
                     </div>
                     
-                    <div class="stat-card">
+                    <!-- <div class="stat-card">
                         <div class="stat-card-header">
                             <div>
                                 <div class="stat-value"><?php echo number_format($stats['pending_orders']); ?></div>
@@ -130,7 +135,7 @@ $recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.inv
                                 <i class="fas fa-shopping-cart"></i>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     
                     <div class="stat-card">
                         <div class="stat-card-header">
