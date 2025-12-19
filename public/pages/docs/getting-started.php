@@ -1,0 +1,188 @@
+<?php
+require_once '../../../config/config.php';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - <?php echo APP_NAME; ?> Docs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../../../public/assets/css/landing.css">
+    <style>
+        .docs-container {
+            display: flex;
+            min-height: 100vh;
+            padding-top: 80px; /* Header height */
+        }
+        
+        .docs-sidebar {
+            width: 300px;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            padding: 40px 24px;
+            position: sticky;
+            top: 80px;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .docs-content {
+            flex: 1;
+            padding: 60px 80px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #64748b;
+            margin-bottom: 32px;
+            font-size: 0.95rem;
+        }
+
+        .breadcrumb a {
+            color: #64748b;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--primary-color);
+        }
+
+        .doc-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            color: #0f172a;
+        }
+
+        .doc-body {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #334155;
+            max-width: 800px;
+        }
+
+        .doc-body h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-top: 48px;
+            margin-bottom: 24px;
+            color: #1e293b;
+        }
+        
+        .doc-body p {
+            margin-bottom: 24px;
+        }
+
+        .doc-body ul {
+            margin-bottom: 24px;
+            padding-left: 24px;
+        }
+        
+        .doc-body li {
+            margin-bottom: 12px;
+        }
+
+        .nav-group {
+            margin-bottom: 32px;
+        }
+
+        .nav-header {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 16px;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 8px 12px;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .nav-link.active {
+            background: #eff6ff;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 900px) {
+            .docs-sidebar { display: none; }
+            .docs-content { margin-left: 0; padding: 40px 24px; }
+        }
+    </style>
+</head>
+<body>
+    <?php require_once '../../../includes/public_header.php'; ?>
+
+    <div class="docs-container">
+        <aside class="docs-sidebar">
+            <div class="nav-group">
+                <div class="nav-header">Getting Started</div>
+                <a href="getting-started.php" class="nav-link active">Introduction</a>
+                <a href="account-setup.php" class="nav-link">Account Setup</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-header">Guides</div>
+                <a href="billing.php" class="nav-link">Billing & Payments</a>
+                <a href="user-management.php" class="nav-link">User Management</a>
+                <a href="inventory.php" class="nav-link">Inventory Guide</a>
+                <a href="invoicing.php" class="nav-link">Invoicing Tutorial</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-header">Developers</div>
+                <a href="api.php" class="nav-link">API Reference</a>
+            </div>
+        </aside>
+
+        <main class="docs-content">
+            <div class="breadcrumb">
+                <a href="../documentation.php">Docs</a>
+                <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
+                <span>Getting Started</span>
+            </div>
+
+            <h1 class="doc-title">Getting Started with Acculynce</h1>
+            
+            <div class="doc-body">
+                <p>Welcome to Acculynce! We are thrilled to have you on board. This guide will walk you through the basics of setting up your account and getting your business operations running smoothly.</p>
+
+                <h2>1. Setting up your account</h2>
+                <p>Once you've registered, the first thing you should do is configure your company profile. Go to <strong>Settings > Company Settings</strong> to update your:</p>
+                <ul>
+                    <li>Company Name and Logo</li>
+                    <li>Business Address</li>
+                    <li>Tax Information (GST/VAT)</li>
+                    <li>Default Currency</li>
+                </ul>
+
+                <h2>2. Adding your first item</h2>
+                <p>Acculynce is built around valid inventory data. Navigate to the <strong>Inventory</strong> module and click "Add New Item". You can input details like SKU, purchase price, selling price, and opening stock.</p>
+
+                <h2>3. Creating a test invoice</h2>
+                <p>To see how billing works, try creating a draft invoice. Go to <strong>Sales > Invoices > Create New</strong>. Select a customer (or add a dummy one), add the item you just created, and save it.</p>
+
+                <div style="background: #eff6ff; border-left: 4px solid var(--primary-color); padding: 24px; border-radius: 8px; margin: 32px 0;">
+                    <strong>Tip:</strong> Need help migrating data? Check out our import guides or contact support for assistance with bulk uploads.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <?php require_once '../../../includes/public_footer.php'; ?>
+</body>
+</html>

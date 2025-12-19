@@ -193,11 +193,21 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
         </div>
         
         <!-- Missing Production Module -->
-        <!-- <div class="menu-section">
+        <!-- Support Module -->
+        <div class="menu-section">
             <div class="menu-section-title">
-                <span>Production</span>
+                <span>Support</span>
             </div>
-        </div> -->
+            
+            <a href="<?php echo MODULES_URL; ?>/support/index.php" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/support/') !== false && strpos($_SERVER['PHP_SELF'], 'create') === false ? 'active' : ''; ?>" title="My Tickets">
+                <i class="fas fa-life-ring"></i>
+                <span>My Tickets</span>
+            </a>
+            <a href="<?php echo MODULES_URL; ?>/support/create.php" class="menu-item <?php echo strpos($_SERVER['PHP_SELF'], '/support/create.php') !== false ? 'active' : ''; ?>" title="New Ticket">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Ticket</span>
+            </a>
+        </div>
         
         <div class="menu-section">
             <?php 
@@ -222,6 +232,7 @@ $logoPath = !empty($brandingSettings['logo_path']) ? BASE_URL . $brandingSetting
                     <i class="fas fa-cog"></i>
                     <span>System Settings</span>
                 </a>
+               
                 <?php endif; ?>
 
             <?php endif; ?>

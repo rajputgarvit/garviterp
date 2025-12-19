@@ -14,8 +14,12 @@ if (!defined('BASE_URL')) {
         <ul class="nav-menu">
             <li><a href="<?php echo BASE_URL; ?>public/pages/features.php">Features</a></li>
             <li><a href="<?php echo BASE_URL; ?>public/pages/pricing.php">Pricing</a></li>
-            <li><a href="<?php echo BASE_URL; ?>public/pages/contact.php">Resources</a></li>
-            <li><a href="<?php echo BASE_URL; ?>modules/auth/login.php" class="btn-login">Sign In</a></li>
+            <li><a href="<?php echo BASE_URL; ?>public/contact.php">Contact</a></li>
+            <?php if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])): ?>
+                <li><a href="<?php echo BASE_URL; ?>modules/dashboard/index.php" class="btn-login">Go to Dashboard</a></li>
+            <?php else: ?>
+                <li><a href="<?php echo BASE_URL; ?>modules/auth/login.php" class="btn-login">Sign In</a></li>
+            <?php endif; ?>
         </ul>
     </div>
 </nav>

@@ -461,5 +461,100 @@ class Auth {
     public function isImpersonating() {
         return isset($_SESSION['is_impersonating']) && $_SESSION['is_impersonating'];
     }
+
+    /**
+     * Initiate Password Reset
+     */
+    public function initiatePasswordReset($email) {
+        $user = $this->db->fetchOne("SELECT id, username FROM users WHERE email = ? AND is_active = 1", [$email]);
+        
+        if (!$user) {
+            return false;
+        }
+
+        // Generate secure token
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+        $this->db->update('users', 
+            [
+                'password_reset_token' => $token,
+                'password_reset_expires_at' => $expiresAt
+            ],
+            'id = ?',
+            [$user['id']]
+        );
+
+        $resetLink = BASE_URL . "modules/auth/reset-password.php?token=" . $token;
+        $subject = "Reset your password";
+        
+        $message = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .btn { display: inline-block; padding: 10px 20px; background-color: #007bff; color: #fff; text-decoration: none; border-radius: 5px; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <h2>Password Reset Request</h2>
+                <p>Hello " . htmlspecialchars($user['username']) . ",</p>
+                <p>We received a request to reset your password. Click the button below to choose a new password:</p>
+                <p><a href='$resetLink' class='btn'>Reset Password</a></p>
+                <p>This link will expire in 1 hour.</p>
+                <p>If you didn't request this, user simply ignore this email.</p>
+            </div>
+        </body>
+        </html>
+        ";
+
+        require_once __DIR__ . '/Mail.php';
+        $mail = new Mail();
+        // Use sendWithResend or similar depending on Mail implementation
+        return $mail->sendWithResend($email, $subject, $message);
+    }
+
+    /**
+     * Verify Password Reset Token
+     */
+    public function verifyPasswordResetToken($token) {
+        if (empty($token)) return false;
+
+        $user = $this->db->fetchOne(
+            "SELECT id FROM users WHERE password_reset_token = ? AND password_reset_expires_at > NOW()",
+            [$token]
+        );
+
+        return $user ? $user['id'] : false;
+    }
+
+    /**
+     * Reset Password with Token
+     */
+    public function resetPasswordWithToken($token, $newPassword) {
+        $userId = $this->verifyPasswordResetToken($token);
+        
+        if (!$userId) {
+            return false;
+        }
+
+        $this->db->update('users',
+            [
+                'password_hash' => password_hash($newPassword, PASSWORD_DEFAULT),
+                'password_reset_token' => null,
+                'password_reset_expires_at' => null
+            ],
+            'id = ?',
+            [$userId]
+        );
+        
+        // Log password change
+        $this->logAudit($userId, 'password_reset_via_token', 'users', $userId);
+
+        return true;
+    }
 }
 
