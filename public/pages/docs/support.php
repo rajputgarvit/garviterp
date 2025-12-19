@@ -6,7 +6,7 @@ require_once '../../../config/config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing & Payments - <?php echo APP_NAME; ?> Docs</title>
+    <title>Support Guide - <?php echo APP_NAME; ?> Docs</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../../public/assets/css/landing.css">
@@ -46,11 +46,11 @@ require_once '../../../config/config.php';
                 <a href="purchases.php" class="nav-link">Purchases</a>
                 <a href="reports.php" class="nav-link">Reports</a>
                 <a href="invoicing.php" class="nav-link">Sales & Invoicing</a>
-                <a href="support.php" class="nav-link">Support</a>
+                <a href="support.php" class="nav-link active">Support</a>
             </div>
             <div class="nav-group">
                 <div class="nav-header">Administration</div>
-                <a href="billing.php" class="nav-link active">Billing & Utils</a>
+                <a href="billing.php" class="nav-link">Billing & Utils</a>
                 <a href="user-management.php" class="nav-link">Users & Roles</a>
             </div>
             <div class="nav-group">
@@ -63,22 +63,22 @@ require_once '../../../config/config.php';
             <div class="breadcrumb">
                 <a href="../documentation.php">Docs</a>
                 <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
-                <span>Billing & Payments</span>
+                <span>Support</span>
             </div>
 
-            <h1 class="doc-title">Billing & Payments</h1>
+            <h1 class="doc-title">Support & Helpdesk</h1>
             
             <div class="doc-body">
-                <p>Manage your Acculynce subscription, update payment methods, and view your invoice history.</p>
+                <p>Support tools for handling customer queries and internal tickets.</p>
 
-                <h2>Managing your Subscription</h2>
-                <p>To upgrade or downgrade your plan, log in and navigate to <strong>Settings > Subscription</strong>. You'll see current plan details and options to change your tier.</p>
+                <h2>Ticket Management</h2>
+                <p>Track customer issues, bugs, or feature requests via the Ticket system. Agents can assign priorities, update statuses, and communicate with users directly within the ticket thread.</p>
 
-                <h2>Payment Methods</h2>
-                <p>We accept major credit cards (Visa, Mastercard, Amex). You can add or remove cards in the "Payment Methods" section. We use Stripe to securely process all payments.</p>
+                <h2>Website Inquiries</h2>
+                <p>Manage submissions from your public "Contact Us" form. Admins can view these inquiries and reply directly via email from the panel.</p>
 
-                <h2>Viewing Invoices</h2>
-                <p>Need a receipt for your accounting? All past invoices for your subscription fees are available for download in PDF format under the "Billing History" tab.</p>
+                <h2>Knowledge Base</h2>
+                <p>Creating documentation (like this page!) helps your users self-serve. You can create guides and articles to answer common questions and reduce ticket volume.</p>
             </div>
         </main>
     </div>

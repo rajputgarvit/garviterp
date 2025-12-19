@@ -6,7 +6,7 @@ require_once '../../../config/config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing & Payments - <?php echo APP_NAME; ?> Docs</title>
+    <title>Reports Guide - <?php echo APP_NAME; ?> Docs</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../../public/assets/css/landing.css">
@@ -44,13 +44,13 @@ require_once '../../../config/config.php';
                 <a href="hr.php" class="nav-link">HR & Payroll</a>
                 <a href="inventory.php" class="nav-link">Inventory</a>
                 <a href="purchases.php" class="nav-link">Purchases</a>
-                <a href="reports.php" class="nav-link">Reports</a>
+                <a href="reports.php" class="nav-link active">Reports</a>
                 <a href="invoicing.php" class="nav-link">Sales & Invoicing</a>
                 <a href="support.php" class="nav-link">Support</a>
             </div>
             <div class="nav-group">
                 <div class="nav-header">Administration</div>
-                <a href="billing.php" class="nav-link active">Billing & Utils</a>
+                <a href="billing.php" class="nav-link">Billing & Utils</a>
                 <a href="user-management.php" class="nav-link">Users & Roles</a>
             </div>
             <div class="nav-group">
@@ -63,22 +63,25 @@ require_once '../../../config/config.php';
             <div class="breadcrumb">
                 <a href="../documentation.php">Docs</a>
                 <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
-                <span>Billing & Payments</span>
+                <span>Reports</span>
             </div>
 
-            <h1 class="doc-title">Billing & Payments</h1>
+            <h1 class="doc-title">Analytics & Reports</h1>
             
             <div class="doc-body">
-                <p>Manage your Acculynce subscription, update payment methods, and view your invoice history.</p>
+                <p>Gain insights into your business performance with comprehensive data visualization.</p>
 
-                <h2>Managing your Subscription</h2>
-                <p>To upgrade or downgrade your plan, log in and navigate to <strong>Settings > Subscription</strong>. You'll see current plan details and options to change your tier.</p>
+                <h2>Sales Reports</h2>
+                <p>Analyze revenue over time, top-selling products, and customer performance. Filters allow you to drill down by date range, customer, or product category.</p>
 
-                <h2>Payment Methods</h2>
-                <p>We accept major credit cards (Visa, Mastercard, Amex). You can add or remove cards in the "Payment Methods" section. We use Stripe to securely process all payments.</p>
+                <h2>Purchase & Expense Reports</h2>
+                <p>Track your spending habits. View reports on vendor expenses, category-wise spending, and purchase trends to optimize costs.</p>
 
-                <h2>Viewing Invoices</h2>
-                <p>Need a receipt for your accounting? All past invoices for your subscription fees are available for download in PDF format under the "Billing History" tab.</p>
+                <h2>Inventory Reports</h2>
+                <p>Monitor stock value, movement history, and low-stock items. Essential for maintaining optimal inventory levels and preventing stockouts.</p>
+
+                <h2>Tax Reports</h2>
+                <p>Generate detailed tax summaries (GST/VAT) for your financial periods to assist with filing returns.</p>
             </div>
         </main>
     </div>
