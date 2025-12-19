@@ -31,7 +31,7 @@ if (!$isSpaRequest):
 <?php endif; ?>
 <?php if (isset($_SESSION['is_impersonating']) && $_SESSION['is_impersonating']): ?>
     <div style="background-color: #ff4757; color: white; padding: 10px; text-align: center; width: 100%; position: sticky; top: 0; z-index: 1001; height: 50px; display: flex; align-items: center; justify-content: center;">
-        You are currently impersonating <strong><?php echo htmlspecialchars($user['full_name']); ?></strong>.
+        You are currently impersonating &nbsp; <strong><?php echo htmlspecialchars($user['full_name']); ?></strong>.
         <a href="<?php echo MODULES_URL; ?>/auth/stop-impersonation.php" style="color: white; text-decoration: underline; font-weight: bold; margin-left: 10px;">
             Exit Impersonation
         </a>
