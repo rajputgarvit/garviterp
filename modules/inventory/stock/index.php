@@ -37,9 +37,9 @@ $stock = $db->fetchAll("
     LEFT JOIN product_categories pc ON p.category_id = pc.id
     LEFT JOIN stock_balance sb ON p.id = sb.product_id
     LEFT JOIN warehouses w ON sb.warehouse_id = w.id
-    WHERE p.is_active = 1
+    WHERE p.is_active = 1 AND p.company_id = ?
     ORDER BY p.name
-");
+", [$user['company_id']]);
 
 // Calculate Dashboard Stats
 $totalProducts = count($stock);

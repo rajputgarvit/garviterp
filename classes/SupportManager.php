@@ -110,14 +110,19 @@ class SupportManager {
     /**
      * Get single ticket details with replies
      */
-    public function getTicketDetails($ticketId) {
+    /**
+     * Get single ticket details with replies
+     */
+    public function getTicketDetails($ticketIdOrNumber) {
+        $condition = is_numeric($ticketIdOrNumber) ? "t.id = ?" : "t.ticket_number = ?";
+        
         $ticket = $this->db->fetchOne(
             "SELECT t.*, c.name as category_name, u.username as creator_name 
              FROM support_tickets t 
              JOIN support_categories c ON t.category_id = c.id 
              JOIN users u ON t.user_id = u.id 
-             WHERE t.id = ?", 
-            [$ticketId]
+             WHERE $condition", 
+            [$ticketIdOrNumber]
         );
 
         if (!$ticket) return null;
@@ -129,7 +134,7 @@ class SupportManager {
              JOIN users u ON r.user_id = u.id 
              WHERE r.ticket_id = ? 
              ORDER BY r.created_at ASC", 
-            [$ticketId]
+            [$ticket['id']]
         );
 
         return $ticket;

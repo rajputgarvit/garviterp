@@ -28,10 +28,10 @@ $query = "
     LEFT JOIN products p ON st.product_id = p.id
     LEFT JOIN warehouses w ON st.warehouse_id = w.id
     LEFT JOIN users u ON st.created_by = u.id
-    WHERE DATE(st.transaction_date) BETWEEN ? AND ?
+    WHERE DATE(st.transaction_date) BETWEEN ? AND ? AND st.company_id = ?
 ";
 
-$params = [$startDate, $endDate];
+$params = [$startDate, $endDate, $user['company_id']];
 
 if (!empty($productId)) {
     $query .= " AND st.product_id = ?";
@@ -48,8 +48,8 @@ $query .= " ORDER BY st.transaction_date DESC";
 $transactions = $db->fetchAll($query, $params);
 
 // Get dropdown data
-$products = $db->fetchAll("SELECT id, name, product_code FROM products WHERE is_active = 1 ORDER BY name");
-$warehouses = $db->fetchAll("SELECT id, name FROM warehouses WHERE is_active = 1 ORDER BY name");
+$products = $db->fetchAll("SELECT id, name, product_code FROM products WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
+$warehouses = $db->fetchAll("SELECT id, name FROM warehouses WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
