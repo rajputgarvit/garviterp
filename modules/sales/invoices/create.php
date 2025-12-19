@@ -1007,7 +1007,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                                 <select name="category_id" id="quickAddCategorySelect" class="form-control" style="flex: 1;">
                                     <option value="">Select Category</option>
                                     <?php 
-                                    $categories = $db->fetchAll("SELECT * FROM product_categories WHERE is_active = 1 ORDER BY name");
+                                    $categories = $db->fetchAll("SELECT * FROM product_categories WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
                                     foreach ($categories as $cat): ?>
                                         <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
                                     <?php endforeach; ?>
@@ -1024,7 +1024,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                             <label>Unit of Measure *</label>
                             <select name="uom_id" class="form-control" required>
                                 <?php 
-                                $uoms = $db->fetchAll("SELECT * FROM units_of_measure ORDER BY name");
+                                $uoms = $db->fetchAll("SELECT * FROM units_of_measure WHERE company_id = ? ORDER BY name", [$user['company_id']]);
                                 foreach ($uoms as $uom): ?>
                                     <option value="<?php echo $uom['id']; ?>"><?php echo htmlspecialchars($uom['name'] . ' (' . $uom['symbol'] . ')'); ?></option>
                                 <?php endforeach; ?>
