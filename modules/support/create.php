@@ -342,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 Immediate Help?
                             </div>
                             <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0;">
-                                For critical system outages, please contact the emergency hotline at <strong>+1 (555) 123-4567</strong>.
+                                For critical system outages, please contact the emergency hotline at <strong>+91 9520447284</strong>.
                             </p>
                         </div>
                     </div>

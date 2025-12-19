@@ -10,7 +10,7 @@ $user = $auth->getCurrentUser();
 $supportManager = new SupportManager();
 
 $ticketId = $_GET['id'] ?? 0;
-// We'll pass the ID. To verify access, getDetails will be used.
+// Fetch ticket details (accepts ID or Ticket Number)
 $ticket = $supportManager->getTicketDetails($ticketId);
 
 // Access Control
@@ -23,26 +23,28 @@ if ($ticket['user_id'] != $user['id'] && !$canManage) {
     die("Access Denied.");
 }
 
-// Handle Reply
+// Handle POST Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['reply_message'])) {
         $message = trim($_POST['reply_message']);
         if (!empty($message)) {
             $supportManager->addReply($ticket['id'], $user['id'], $message);
-            header("Location: view.php?id=" . $ticket['id']);
+            header("Location: view.php?id=" . $ticket['ticket_number']);
             exit;
         }
     }
     
-    // Handle Status Change (Admin/Owner)
+    // Handle Status Change (User closing/reopening own ticket)
     if (isset($_POST['update_status'])) {
         $newStatus = $_POST['status'];
-        $supportManager->updateStatus($ticket['id'], $newStatus);
-        header("Location: view.php?id=" . $ticket['id']);
+        // Allow user to Close or Reopen only
+        if ($newStatus === 'Closed' || $newStatus === 'Open') {
+            $supportManager->updateStatus($ticket['id'], $newStatus);
+        }
+        header("Location: view.php?id=" . $ticket['ticket_number']);
         exit;
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,82 +52,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket #<?php echo htmlspecialchars($ticket['ticket_number']); ?> - <?php echo APP_NAME; ?></title>
-    <link rel="stylesheet" href="../../public/assets/css/style.css">
+    <!-- Add Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>public/assets/css/style.css?v=<?php echo time(); ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Shared Modern UI Styles */
-        .page-header-modern {
-            margin-bottom: 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
+        /* Conversation Specific Styles */
+        .chat-bubble {
+            font-size: 0.95rem;
+            line-height: 1.5;
         }
-        .breadcrumb-nav { margin-bottom: 8px; }
-        .breadcrumb-list {
-            list-style: none; padding: 0; margin: 0; display: flex; gap: 8px;
-            font-size: 0.85rem; color: var(--text-secondary);
-        }
-        .breadcrumb-list li { display: flex; align-items: center; gap: 8px; }
-        .breadcrumb-list li:not(:last-child)::after { content: "/"; color: #cbd5e1; }
-        .breadcrumb-link { text-decoration: none; color: var(--text-secondary); transition: color 0.2s; }
-        .breadcrumb-link:hover { color: var(--primary-color); }
-        .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
-        .header-title {
-            font-size: 2rem; font-weight: 700; color: var(--text-primary);
-            margin: 0; line-height: 1.2;
-        }
+        .avatar-circle { font-family: 'Inter', sans-serif; letter-spacing: -0.5px; }
 
-        /* Ticket Meta & Status */
-        .ticket-overview-card {
-            background: white; border-radius: 16px; padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid var(--border-color);
-            margin-bottom: 30px;
-        }
-        .ticket-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
-        .ticket-subject { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 12px; }
-        .status-badge-lg {
-            padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;
-            display: inline-flex; align-items: center; gap: 8px;
-        }
-        .status-Open { background-color: #d1fae5; color: #065f46; }
-        .status-In-Progress { background-color: #dbeafe; color: #1e40af; }
-        .status-Awaiting-Reply { background-color: #ffedd5; color: #9a3412; }
-        .status-Resolved { background-color: #f3f4f6; color: #374151; }
-        .status-Closed { background-color: #f1f5f9; color: #64748b; }
+        /* Shared Badge Styles */
+        .bg-success-soft { background-color: #d1e7dd; color: #0f5132; }
+        .bg-primary-soft { background-color: #cfe2ff; color: #084298; }
+        .bg-warning-soft { background-color: #fff3cd; color: #664d03; }
+        .bg-secondary-soft { background-color: #e2e3e5; color: #41464b; }
 
-        .ticket-meta-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
-            padding-top: 20px; margin-top: 20px; border-top: 1px solid var(--border-color);
-        }
-        .meta-box { display: flex; flex-direction: column; gap: 4px; }
-        .meta-label { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-        .meta-value { font-size: 0.95rem; color: var(--text-primary); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+        /* Scrollbar */
+        #conversationBody::-webkit-scrollbar { width: 6px; }
+        #conversationBody::-webkit-scrollbar-track { background: transparent; }
+        #conversationBody::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.1); border-radius: 3px; }
+        #conversationBody:hover::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); }
 
-        /* Conversation */
-        .conversation-container { max-width: 900px; margin: 0 auto; }
-        .message-card {
-            background: white; border-radius: 12px; border: 1px solid var(--border-color);
-            margin-bottom: 24px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-        }
-        .message-card.staff-reply { border: 1px solid #bfdbfe; background: #eff6ff; }
-        .message-card.user-reply { border-left: 4px solid var(--primary-color); }
-        .message-header {
-            padding: 16px 24px; background: rgba(255,255,255,0.5);
-            border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;
-        }
-        .sender-name { font-weight: 600; color: var(--text-primary); font-size: 1rem; }
-        .sender-role { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 700; margin-left: 8px; }
-        .role-staff { background: #dbeafe; color: #1e40af; }
-        .role-user { background: #f1f5f9; color: #64748b; }
-        .message-time { font-size: 0.85rem; color: var(--text-secondary); }
-        .message-body { padding: 24px; color: var(--text-primary); line-height: 1.6; font-size: 1rem; }
-
-        .reply-section { background: white; border-radius: 16px; padding: 24px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-top: 40px; }
-        .btn-action { padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; }
-        .btn-primary-action { background: var(--primary-color); color: white; }
-        .btn-primary-action:hover { opacity: 0.9; transform: translateY(-1px); }
+        .hover-lift:hover { transform: translateY(-2px); transition: transform 0.2s; }
     </style>
 </head>
 <body>
@@ -136,134 +89,213 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php include INCLUDES_PATH . '/header.php'; ?>
             
             <div class="content-area">
-                <!-- Breadcrumb & Header -->
-                <div class="page-header-modern">
+                <!-- Header -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
                     <div>
-                        <nav class="breadcrumb-nav">
-                            <ul class="breadcrumb-list">
-                                <li><a href="index.php" class="breadcrumb-link">Support</a></li>
-                                <li><a href="index.php" class="breadcrumb-link">My Tickets</a></li>
-                                <li><span class="breadcrumb-current">#<?php echo htmlspecialchars($ticket['ticket_number']); ?></span></li>
-                            </ul>
+                        <nav aria-label="breadcrumb" class="mb-2">
+                            <ol class="breadcrumb mb-0 small">
+                                <li class="breadcrumb-item"><a href="index.php" class="text-decoration-none">My Tickets</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">#<?php echo htmlspecialchars($ticket['ticket_number']); ?></li>
+                            </ol>
                         </nav>
-                        <h1 class="header-title">Ticket Details</h1>
+                        <h1 class="h3 mb-0 fw-bold text-dark">
+                            <?php echo htmlspecialchars($ticket['subject']); ?>
+                        </h1>
                     </div>
-                    <div>
-                        <form method="POST" style="display: inline-block;">
+                    
+                    <div class="d-flex gap-2 align-items-center">
+                        <?php
+                        $sClass = match($ticket['status']) {
+                            'Open' => 'success',
+                            'In Progress' => 'primary',
+                            'Awaiting Reply' => 'warning',
+                            'Resolved', 'Closed' => 'secondary',
+                            default => 'light'
+                        };
+                        ?>
+                        <span class="badge bg-<?php echo $sClass; ?> bg-opacity-10 text-<?php echo $sClass; ?> border border-<?php echo $sClass; ?> border-opacity-10 py-2 px-3">
+                            <i class="fas fa-circle me-1" style="font-size: 6px; vertical-align: middle;"></i> <?php echo htmlspecialchars($ticket['status']); ?>
+                        </span>
+
+                        <form method="POST" class="d-inline">
                             <input type="hidden" name="update_status" value="1">
                             <?php if ($ticket['status'] !== 'Closed'): ?>
                                 <input type="hidden" name="status" value="Closed">
-                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to close this ticket?')">
-                                    <i class="fas fa-check-circle"></i> Close Ticket
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to close this ticket? You will not be able to reply unless it is reopened.')">
+                                    <i class="fas fa-check-circle me-1"></i> Close Ticket
                                 </button>
                             <?php else: ?>
                                 <input type="hidden" name="status" value="Open">
-                                <button type="submit" class="btn btn-outline-secondary">
-                                    <i class="fas fa-undo"></i> Re-open Ticket
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-undo me-1"></i> Re-open Ticket
                                 </button>
                             <?php endif; ?>
                         </form>
                     </div>
                 </div>
 
-                <!-- Ticket Overview -->
-                <div class="ticket-overview-card">
-                    <div class="ticket-header-row">
-                        <div style="flex: 1;">
-                            <h2 class="ticket-subject"><?php echo htmlspecialchars($ticket['subject']); ?></h2>
-                            <div style="display: flex; gap: 12px; align-items: center;">
-                                <span class="status-badge-lg status-<?php echo str_replace(' ', '-', $ticket['status']); ?>">
-                                    <i class="fas fa-circle" style="font-size: 8px;"></i> <?php echo htmlspecialchars($ticket['status']); ?>
-                                </span>
+                <div class="row g-4">
+                    <!-- Conversation Column -->
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-comments me-2 text-primary"></i>Conversation</h6>
+                                <span class="badge bg-light text-secondary border"><?php echo count($ticket['replies']); ?> Messages</span>
                             </div>
-                        </div>
-                    </div>
-                    <div class="ticket-meta-grid">
-                        <div class="meta-box">
-                            <span class="meta-label">Category</span>
-                            <span class="meta-value"><i class="fas fa-folder text-muted"></i> <?php echo htmlspecialchars($ticket['category_name']); ?></span>
-                        </div>
-                        <div class="meta-box">
-                            <span class="meta-label">Priority</span>
-                            <?php 
-                                $pColor = $ticket['priority'] === 'High' || $ticket['priority'] === 'Critical' ? '#ef4444' : ($ticket['priority'] === 'Medium' ? '#f59e0b' : '#10b981');
-                            ?>
-                            <span class="meta-value" style="color: <?php echo $pColor; ?>;"><i class="fas fa-flag"></i> <?php echo htmlspecialchars($ticket['priority']); ?></span>
-                        </div>
-                        <div class="meta-box">
-                            <span class="meta-label">Created on</span>
-                            <span class="meta-value"><i class="far fa-calendar text-muted"></i> <?php echo date('M d, Y h:i A', strtotime($ticket['created_at'])); ?></span>
-                        </div>
-                        <div class="meta-box">
-                            <span class="meta-label">Ticket ID</span>
-                            <span class="meta-value">#<?php echo htmlspecialchars($ticket['ticket_number']); ?></span>
-                        </div>
-                    </div>
-                </div>
+                            
+                            <div class="card-body bg-light bg-opacity-50 p-4" style="min-height: 400px; max-height: 600px; overflow-y: auto;" id="conversationBody">
+                                <?php if (empty($ticket['replies'])): ?>
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="fas fa-comment-dots fa-3x opacity-25 mb-3"></i>
+                                        <p>No messages yet.</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($ticket['replies'] as $reply): ?>
+                                        <?php 
+                                            // Determine message owner
+                                            $isMe = ($reply['user_id'] == $user['id']);
+                                            $roles = $reply['replier_roles'] ?? '';
+                                            $isStaff = (strpos($roles, 'Super Admin') !== false || strpos($roles, 'Admin') !== false); 
+                                            
+                                            // Layout variables
+                                            // Me = Right, Staff/Other = Left
+                                            $containerClass = $isMe ? 'justify-content-end' : 'justify-content-start';
+                                            $bubbleClass = $isMe ? 'bg-primary text-white' : ($isStaff ? 'bg-white border-primary border-2 text-dark' : 'bg-white border text-dark');
+                                            $metaClass = $isMe ? 'text-end' : 'text-start';
+                                            
+                                            // Initials
+                                            $parts = explode(' ', $reply['replier_name']);
+                                            $initials = strtoupper(substr($parts[0], 0, 1));
+                                            if (isset($parts[1])) $initials .= strtoupper(substr($parts[1], 0, 1));
+                                            
+                                            // Sender Label
+                                            $senderLabel = $isMe ? 'You' : $reply['replier_name'];
+                                            if ($isStaff && !$isMe) $senderLabel .= ' <span class="badge bg-primary bg-opacity-10 text-primary ms-1" style="font-size: 0.65rem;">SUPPORT</span>';
+                                        ?>
+                                        
+                                        <div class="d-flex mb-4 <?php echo $containerClass; ?>">
+                                            <?php if (!$isMe): ?>
+                                                <div class="flex-shrink-0 me-3">
+                                                    <div class="avatar-circle <?php echo $isStaff ? 'bg-primary text-white' : 'bg-secondary bg-opacity-10 text-secondary'; ?> fw-bold rounded-circle d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px;" title="<?php echo htmlspecialchars($reply['replier_name']); ?>">
+                                                        <?php echo $isStaff ? '<i class="fas fa-headset"></i>' : $initials; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                            
+                                            <div style="max-width: 75%;">
+                                                <div class="chat-bubble p-3 rounded-3 shadow-sm <?php echo $bubbleClass; ?>" style="position: relative;">
+                                                    <?php echo nl2br(htmlspecialchars($reply['message'])); ?>
+                                                </div>
+                                                <div class="mt-1 small text-muted <?php echo $metaClass; ?>">
+                                                    <span class="fw-bold"><?php echo $senderLabel; ?></span>
+                                                    <span class="mx-1">•</span>
+                                                    <span><?php echo date('M d, h:i A', strtotime($reply['created_at'])); ?></span>
+                                                </div>
+                                            </div>
 
-                <!-- Conversation -->
-                <div class="conversation-container">
-                    <?php foreach ($ticket['replies'] as $reply): ?>
-                        <?php 
-                            $roles = $reply['replier_roles'] ?? '';
-                            $isStaff = (strpos($roles, 'Super Admin') !== false || strpos($roles, 'Admin') !== false); 
-                            $cardClass = $isStaff ? 'staff-reply' : 'user-reply';
-                        ?>
-                        <div class="message-card <?php echo $cardClass; ?>">
-                            <div class="message-header">
-                                <div style="display: flex; align-items: center;">
-                                    <?php if ($isStaff): ?>
-                                        <div style="width: 36px; height: 36px; background: white; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #dbeafe; margin-right: 12px;">
-                                            <i class="fas fa-user-shield"></i>
+                                            <?php if ($isMe): ?>
+                                                <div class="flex-shrink-0 ms-3">
+                                                    <div class="avatar-circle bg-light border text-muted fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="You">
+                                                        <?php echo $initials; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
-                                    <?php else: ?>
-                                        <div style="width: 36px; height: 36px; background: #f1f5f9; color: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                                            <i class="fas fa-user"></i>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                <div id="scrollAnchor"></div>
+                            </div>
+                            
+                            <?php if ($ticket['status'] !== 'Closed'): ?>
+                                <div class="card-footer bg-white p-4 border-top">
+                                    <form method="POST">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold text-dark small text-uppercase">Post a Reply</label>
+                                            <textarea name="reply_message" class="form-control bg-light border-0" rows="4" placeholder="Type your message here..." required style="resize: none;"></textarea>
                                         </div>
-                                    <?php endif; ?>
-                                    <div>
-                                        <span class="sender-name"><?php echo htmlspecialchars($reply['replier_name']); ?></span>
-                                        <?php if ($isStaff): ?>
-                                            <span class="sender-role role-staff">Support Staff</span>
-                                        <?php else: ?>
-                                            <span class="sender-role role-user">You</span>
-                                        <?php endif; ?>
+                                        <div class="d-flex justify-content-end align-items-center">
+                                            <button type="submit" class="btn btn-primary px-4 shadow-sm hover-lift">
+                                                <i class="fas fa-paper-plane me-2"></i> Send Reply
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            <?php else: ?>
+                                <div class="card-footer bg-light p-4 text-center border-top">
+                                    <div class="text-muted mb-2"><i class="fas fa-lock fa-lg"></i></div>
+                                    <p class="mb-0 text-muted small">This ticket is closed. Please reopen it if you need further assistance.</p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Column -->
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="fw-bold text-dark mb-3 text-uppercase small ls-1">Ticket Info</h6>
+                                
+                                <div class="mb-4">
+                                    <label class="d-block text-muted small mb-1">Created</label>
+                                    <div class="d-flex align-items-center">
+                                        <i class="far fa-calendar-alt text-muted me-2"></i>
+                                        <span class="fw-medium text-dark"><?php echo date('F d, Y', strtotime($ticket['created_at'])); ?></span>
+                                    </div>
+                                    <small class="text-muted ms-4"><?php echo date('h:i A', strtotime($ticket['created_at'])); ?></small>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label class="d-block text-muted small mb-1">Category</label>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-light text-dark border fw-normal px-2 py-1">
+                                            <i class="fas fa-tag me-1 text-muted small"></i>
+                                            <?php echo htmlspecialchars($ticket['category_name']); ?>
+                                        </span>
                                     </div>
                                 </div>
-                                <span class="message-time"><?php echo date('M d, h:i A', strtotime($reply['created_at'])); ?></span>
-                            </div>
-                            <div class="message-body">
-                                <?php echo nl2br(htmlspecialchars($reply['message'])); ?>
+                                
+                                <div class="mb-0">
+                                    <label class="d-block text-muted small mb-1">Priority</label>
+                                    <?php
+                                    $pClass = match($ticket['priority']) {
+                                        'Low' => 'bg-info bg-opacity-10 text-info',
+                                        'Medium' => 'bg-warning bg-opacity-10 text-warning',
+                                        'High' => 'bg-danger bg-opacity-10 text-danger',
+                                        'Critical' => 'bg-danger text-white',
+                                        default => 'bg-secondary bg-opacity-10 text-secondary'
+                                    };
+                                    ?>
+                                    <span class="badge <?php echo $pClass; ?> rounded-pill px-3 py-1 fw-medium">
+                                        <?php echo htmlspecialchars($ticket['priority']); ?>
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    <?php endforeach; ?>
 
-                    <!-- Reply Section -->
-                    <?php if ($ticket['status'] !== 'Closed'): ?>
-                        <div class="reply-section">
-                            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; color: var(--text-primary);">Post a Reply</h3>
-                            <form method="POST" action="">
-                                <div class="form-group" style="margin-bottom: 20px;">
-                                    <textarea name="reply_message" class="form-control" rows="5" placeholder="Type your message here... Provide as much detail as possible to help us resolve the issue." required style="padding: 16px; border-radius: 12px; font-size: 1rem;"></textarea>
-                                </div>
-                                <div style="display: flex; justify-content: flex-end;">
-                                    <button type="submit" class="btn-action btn-primary-action">
-                                        <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Send Reply
-                                    </button>
-                                </div>
-                            </form>
+                        <!-- Help Card -->
+                        <div class="card border-0 shadow-sm bg-primary text-white overflow-hidden" style="background: linear-gradient(135deg, var(--primary-color) 0%, #1e40af 100%);">
+                            <div class="card-body p-4 position-relative">
+                                <i class="fas fa-life-ring position-absolute" style="font-size: 80px; opacity: 0.1; right: -10px; bottom: -10px;"></i>
+                                <h6 class="fw-bold mb-2">Need immediate help?</h6>
+                                <p class="small opacity-90 mb-3">Our support team is available during business hours to assist you.</p>
+                                <a href="create.php" class="btn btn-sm btn-light text-primary fw-bold shadow-sm">Open New Ticket</a>
+                            </div>
                         </div>
-                    <?php else: ?>
-                        <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 30px; text-align: center; margin-top: 40px; color: var(--text-secondary);">
-                            <div style="margin-bottom: 10px; font-size: 2rem; color: #94a3b8;"><i class="fas fa-lock"></i></div>
-                            <h4 style="color: var(--text-primary); font-weight: 600;">This ticket is closed</h4>
-                            <p>You cannot reply to this ticket unless it is re-opened.</p>
-                        </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
-
             </div>
         </main>
     </div>
+
+    <script>
+        // Auto-scroll
+        document.addEventListener("DOMContentLoaded", function() {
+            const conversationBody = document.getElementById('conversationBody');
+            const scrollAnchor = document.getElementById('scrollAnchor');
+            if (conversationBody && scrollAnchor) {
+                scrollAnchor.scrollIntoView({ behavior: 'auto' });
+            }
+        });
+    </script>
 </body>
 </html>
