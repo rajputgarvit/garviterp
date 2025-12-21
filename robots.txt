@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+
+# Disallow system directories
+Disallow: /modules/
+Disallow: /classes/
+Disallow: /config/
+Disallow: /includes/
+Disallow: /database/
+Disallow: /ajax/
+Disallow: /tools/
+Disallow: /uploads/
+
+# Disallow specific files
+Disallow: /setup.php
+Disallow: /composer.json
+Disallow: /composer.lock
+Disallow: /package.json
+Disallow: /package-lock.json
+Disallow: /README.md
+
+# Sitemap
+Sitemap: https://acculynce.com/sitemap.xml
