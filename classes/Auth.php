@@ -38,6 +38,26 @@ class Auth {
         
         return false;
     }
+
+    public function forceLogin($userId) {
+        $user = $this->db->fetchOne(
+            "SELECT u.*, GROUP_CONCAT(r.name) as roles 
+             FROM users u 
+             LEFT JOIN user_roles ur ON u.id = ur.user_id 
+             LEFT JOIN roles r ON ur.role_id = r.id 
+             WHERE u.id = ? AND u.is_active = 1 
+             GROUP BY u.id",
+            [$userId]
+        );
+
+        if ($user) {
+            $this->db->update('users', ['last_login' => date('Y-m-d H:i:s')], 'id = ?', [$user['id']]);
+            $this->setSession($user);
+            $this->logAudit($user['id'], 'force_login', 'users', $user['id']);
+            return true;
+        }
+        return false;
+    }
     
     public function logout() {
         if (isset($_SESSION['user_id'])) {
@@ -71,11 +91,12 @@ class Auth {
                 'username' => $_SESSION['username'],
                 'full_name' => $_SESSION['full_name'],
                 'email' => $_SESSION['email'],
+                'avatar_path' => $_SESSION['avatar_path'] ?? null, // Default to null if not set
                 'company_id' => $_SESSION['company_id'] ?? null,
                 'roles' => $_SESSION['roles'] ?? []
             ];
         }
-        return null;
+        return null; // Return null if not logged in
     }
     
     public function hasRole($role) {
@@ -137,6 +158,7 @@ class Auth {
         $_SESSION['username'] = $user['username'];
         $_SESSION['full_name'] = $user['full_name'];
         $_SESSION['email'] = $user['email'];
+        $_SESSION['avatar_path'] = $user['avatar_path'] ?? null;
         $_SESSION['company_id'] = $user['company_id'];
         $_SESSION['roles'] = $user['roles'];
     }

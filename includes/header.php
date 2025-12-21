@@ -38,30 +38,11 @@ if (!$isSpaRequest):
     </div>
 <?php endif; ?>
 
-<header class="top-header" style="<?php echo (isset($_SESSION['is_impersonating']) && $_SESSION['is_impersonating']) ? 'top: 50px;' : ''; ?>">
-    <div class="header-left" style="display: flex; align-items: center; gap: 15px;">
-        <h1><?php echo ucwords(str_replace(['-', '_'], [' ', ' '], basename(dirname($_SERVER['PHP_SELF'])))); ?></h1>
-    </div>
-    <div class="header-right">
-        <?php if ($auth->hasRole('Super Admin')): ?>
-            <a href="<?php echo MODULES_URL; ?>/admin/dashboard.php" class="btn btn-primary btn-sm" style="margin-right: 15px;">
-                <i class="fas fa-user-shield"></i> Go to Admin Panel
-            </a>
-        <?php endif; ?>
-        <div class="user-menu">
-            <div class="user-avatar">
-                <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
-            </div>
-            <div>
-                <div style="font-weight: 600; font-size: 14px;"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                <div style="font-size: 12px; color: var(--text-secondary);"><?php echo htmlspecialchars(is_array($user['roles']) ? implode(', ', $user['roles']) : $user['roles']); ?></div>
-            </div>
-            <a href="<?php echo MODULES_URL; ?>/auth/logout.php" style="margin-left: 10px; color: var(--danger-color);" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </a>
-        </div>
-    </div>
-</header>
+<div class="page-title-bar" style="margin-top: 20px; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between;">
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin: 0;">
+        <?php echo ucwords(str_replace(['-', '_'], [' ', ' '], basename(dirname($_SERVER['PHP_SELF'])))); ?>
+    </h1>
+</div>
 
 <?php
 // Subscription Banner Logic

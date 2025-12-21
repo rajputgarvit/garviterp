@@ -4,13 +4,12 @@ require_once '../../../config/config.php';
 require_once '../../../classes/Auth.php';
 require_once '../../../classes/Database.php';
 require_once '../../../classes/CodeGenerator.php';
-require_once '../../../classes/StockManager.php';
 
 $auth = new Auth();
 // Auth::enforceGlobalRouteSecurity() handles permissions.
+$user = $auth->getCurrentUser();
 $db = Database::getInstance();
 $codeGen = new CodeGenerator();
-$stockManager = new StockManager();
 $user = $auth->getCurrentUser();
 
 // Generate next invoice number
@@ -32,21 +31,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'customer_id' => $_POST['customer_id'],
             'invoice_date' => $_POST['invoice_date'],
             'due_date' => $_POST['due_date'],
-            'payment_status' => $_POST['payment_status'] ?? 'Unpaid',
-            'paid_amount' => floatval($_POST['paid_amount'] ?? 0),
+            'courier_name' => $_POST['courier_name'] ?? '',
+            'tracking_id' => $_POST['tracking_id'] ?? '',
             'subtotal' => 0, // Will update after items
             'discount_amount' => 0, // Will update after items
             'tax_amount' => 0, // Will update after items
+            'shipping_charges' => 0, // Will update after items
             'total_amount' => 0, // Will update after items
             'paid_amount' => 0,
-            'status' => 'Draft',
+            'status' => 'Draft', // Default to Draft, not Unpaid (which is not in enum)
+            'payment_status' => 'Unpaid',
             'notes' => $_POST['notes'] ?? '',
             'created_by' => $user['id'],
-            'company_id' => $user['company_id'],
-            'company_id' => $user['company_id'],
-            'courier_name' => $_POST['courier_name'] ?? null,
-            'tracking_id' => $_POST['tracking_id'] ?? null,
-            'shipping_charges' => floatval($_POST['shipping_charges'] ?? 0)
+            'company_id' => $user['company_id']
         ];
         
         $invoiceId = $db->insert('invoices', $invoiceData);
@@ -61,44 +58,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $discountPercent = floatval($item['discount_percent'] ?? 0);
                 $taxRate = floatval($item['tax_rate'] ?? 0);
                 
-                // Calculate line total (Inclusive Pricing Logic)
-                // Unit Price is treated as Tax Inclusive
+                // Calculate line total
+                $lineSubtotal = $quantity * $unitPrice;
+                $discountAmount = $lineSubtotal * ($discountPercent / 100);
+                $lineAfterDiscount = $lineSubtotal - $discountAmount;
+                $lineTax = $lineAfterDiscount * ($taxRate / 100);
+                $lineTotal = $lineAfterDiscount + $lineTax;
                 
-                $grossLineTotal = $quantity * $unitPrice;
-                $discountAmount = $grossLineTotal * ($discountPercent / 100);
-                $netLineTotal = $grossLineTotal - $discountAmount; // This is the Final Line Total (Inclusive)
-                
-                // Back-calculate Tax
-                // NetTotal = Taxable + Tax
-                // Tax = Taxable * (Rate/100)
-                // NetTotal = Taxable * (1 + Rate/100)
-                // Taxable = NetTotal / (1 + Rate/100)
-                
-                $taxableValue = $netLineTotal / (1 + ($taxRate / 100));
-                $lineTax = $netLineTotal - $taxableValue;
-                
-                $lineTotal = $netLineTotal;
-                
-                $subtotal += $taxableValue; // Subtotal stores the Total Taxable Amount
+                $subtotal += $lineSubtotal;
                 $totalTax += $lineTax;
                 $totalDiscount += $discountAmount;
                 
-                // Server-side check for duplicate serial
-                if (!empty($item['serial_number'])) {
-                    $existingSerial = $db->fetchOne("
-                        SELECT i.invoice_number 
-                        FROM invoice_items ii
-                        JOIN invoices i ON ii.invoice_id = i.id
-                        WHERE ii.serial_number = ? 
-                        AND i.company_id = ?
-                        AND i.status != 'Cancelled'
-                    ", [$item['serial_number'], $user['company_id']]);
-                    
-                    if ($existingSerial) {
-                        throw new Exception("Serial Number '{$item['serial_number']}' is already sold in Invoice " . $existingSerial['invoice_number']);
-                    }
-                }
-
                 $db->insert('invoice_items', [
                     'invoice_id' => $invoiceId,
                     'product_id' => $item['product_id'],
@@ -108,103 +78,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     'discount_percent' => $discountPercent,
                     'tax_rate' => $taxRate,
                     'line_total' => $lineTotal,
-                    'serial_number' => $item['serial_number'] ?? null,
-                    'warranty_period' => $item['warranty_period'] ?? null,
-                    'expiry_date' => !empty($item['expiry_date']) ? $item['expiry_date'] : null,
                     'company_id' => $user['company_id']
                 ]);
-                
-                // Reduce stock - Get default warehouse
-                $defaultWarehouse = $db->fetchOne("SELECT id FROM warehouses WHERE is_active = 1 AND company_id = ? ORDER BY id LIMIT 1", [$user['company_id']]);
-                if ($defaultWarehouse) {
-                    try {
-                        $stockManager->removeStock(
-                            $item['product_id'],
-                            $defaultWarehouse['id'],
-                            $quantity,
-                            'invoice',
-                            $invoiceId,
-                            'Sale from invoice ' . $_POST['invoice_number'],
-                            $user['id'],
-                            $user['company_id']
-                        );
-                    } catch (Exception $e) {
-                        // Log stock error but don't fail invoice creation
-                        error_log("Stock reduction failed: " . $e->getMessage());
-                    }
-                }
             }
         }
         
         // Update invoice totals
         $additionalDiscount = floatval($_POST['discount_amount'] ?? 0);
         $shippingCharges = floatval($_POST['shipping_charges'] ?? 0);
+        $totalAmount = $subtotal - $totalDiscount - $additionalDiscount + $totalTax + $shippingCharges;
         
-        $totalAmountRaw = ($subtotal + $totalTax + $shippingCharges) - $additionalDiscount;
-        $totalAmountRounded = round($totalAmountRaw);
-        $roundOffAmount = $totalAmountRounded - $totalAmountRaw;
+        $paidAmount = 0;
+        $status = 'Unpaid';
+
+        // Handle Instant Payment
+        if (isset($_POST['add_payment']) && $_POST['add_payment'] == '1') {
+            $payAmount = floatval($_POST['payment_amount'] ?? 0);
+            
+            if ($payAmount > 0) {
+                $db->insert('payments', [
+                    'invoice_id' => $invoiceId,
+                    'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
+                    'amount' => $payAmount,
+                    'payment_method' => $_POST['payment_method'] ?? 'Cash',
+                    'notes' => 'Instant payment on invoice creation',
+                    'created_by' => $user['id'],
+                    'company_id' => $user['company_id']
+                ]);
+
+
+
+                $paidAmount = $payAmount;
+                if ($paidAmount >= $totalAmount) {
+                     $paymentStatus = 'Paid';
+                     $status = 'Paid'; // Invoice status matches
+                } elseif ($paidAmount > 0) {
+                     $paymentStatus = 'Partially Paid';
+                     $status = 'Partially Paid'; // Invoice status matches
+                }
+            }
+        }
         
+        // If status 'Unpaid' (default), map to 'Draft' or keep previous if existing.
+        // Since this is CREATE, default is Draft.
+        if ($status === 'Unpaid') {
+            $status = 'Draft';
+        }
+
         $db->update('invoices', [
             'subtotal' => $subtotal,
             'discount_amount' => $totalDiscount + $additionalDiscount,
             'tax_amount' => $totalTax,
-            'round_off_amount' => $roundOffAmount,
-            'total_amount' => $totalAmountRounded,
-            'shipping_charges' => $shippingCharges
+            'shipping_charges' => $shippingCharges,
+            'total_amount' => $totalAmount,
+            'paid_amount' => $paidAmount,
+            'status' => $status,
+            'payment_status' => $paymentStatus ?? 'Unpaid'
         ], 'id = ? AND company_id = ?', [$invoiceId, $user['company_id']]);
-        
-        // Handle Payment
-        if (isset($_POST['add_payment']) && $_POST['add_payment'] == '1') {
-            $paymentAmount = floatval($_POST['payment_amount']);
-            
-            if ($paymentAmount > 0) {
-                // Generate Payment Number
-                $paymentNumber = $codeGen->generatePaymentNumber(); // Assuming this method exists or similar logic
-                if (!$paymentNumber) {
-                     $paymentNumber = 'PAY-' . date('Ymd') . '-' . rand(1000, 9999);
-                }
-
-                $paymentId = $db->insert('payments', [
-                    'company_id' => $user['company_id'],
-                    'invoice_id' => $invoiceId,
-                    'payment_number' => $paymentNumber,
-                    'payment_date' => $_POST['invoice_date'], // Use invoice date as payment date
-                    'amount' => $paymentAmount,
-                    'payment_method' => $_POST['payment_method'],
-                    'notes' => $_POST['payment_notes'] ?? '',
-                    'created_by' => $user['id']
-                ]);
-                
-                // Add Allocation
-                $db->insert('payment_allocations', [
-                    'payment_id' => $paymentId,
-                    'invoice_id' => $invoiceId,
-                    'company_id' => $user['company_id'],
-                    'allocated_amount' => $paymentAmount
-                ]);
-                
-                // Update Invoice Status
-                $paymentStatus = 'Partially Paid';
-                if ($paymentAmount >= $totalAmountRounded) {
-                    $paymentStatus = 'Paid';
-                }
-                
-                $invoiceStatus = 'Sent'; // Default status for created invoice
-                if ($paymentStatus == 'Paid') $invoiceStatus = 'Paid';
-                else if ($paymentStatus == 'Partially Paid') $invoiceStatus = 'Partially Paid';
-
-                $db->update('invoices', [
-                    'paid_amount' => $paymentAmount,
-                    'payment_status' => $paymentStatus,
-                    'status' => $invoiceStatus
-                ], 'id = ?', [$invoiceId]);
-            }
-        }
         
         $db->commit();
         
-        // Redirect to invoice view
-        header("Location: view.php?id=$invoiceId");
+        // Redirect to invoices list
+        header("Location: index.php?success=Invoice created successfully");
         exit;
         
     } catch (Exception $e) {
@@ -213,10 +148,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Get available customers and products for dropdowns
+// Get customers and products for dropdowns
 $customers = $db->fetchAll("SELECT id, customer_code, company_name, contact_person FROM customers WHERE is_active = 1 AND company_id = ? ORDER BY company_name", [$user['company_id']]);
 $products = $db->fetchAll("SELECT id, product_code, name, selling_price, tax_rate, hsn_code, has_serial_number, has_warranty, has_expiry_date FROM products WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
-$salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount FROM sales_orders WHERE status != 'Cancelled' AND company_id = ? ORDER BY order_date DESC LIMIT 50", [$user['company_id']]);
+$paymentMethods = $db->fetchAll("SELECT method_name FROM payment_methods ORDER BY display_order, method_name");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -224,12 +159,104 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Invoice - <?php echo APP_NAME; ?></title>
+    
+    <!-- CSS Files -->
     <link rel="stylesheet" href="../../../public/assets/css/style.css?v=<?php echo time(); ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- JavaScript Files - Load in correct order -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Pass PHP data to JavaScript -->
+    <script>
+        window.productsData = <?php echo json_encode($products); ?>;
+    </script>
+    
+    <!-- Custom invoices JavaScript -->
     <script src="../../../public/assets/js/modules/sales/invoices.js?v=<?php echo time(); ?>"></script>
+    <script>
+        function togglePaymentFields(checkbox) {
+            const fields = document.getElementById('paymentFields');
+            fields.style.display = checkbox.checked ? 'block' : 'none';
+            if (checkbox.checked) {
+                // Auto-fill amount with current grand total if 0
+                const currentTotal = parseFloat(document.getElementById('grandTotalDisplay').textContent.replace(/[^\d.-]/g, '')) || 0;
+                const payAmount = document.getElementById('paymentAmount');
+                if (parseFloat(payAmount.value || 0) === 0) {
+                    payAmount.value = currentTotal.toFixed(2);
+                }
+            }
+        }
+        
+        // Auto-update payment amount when total changes (if payment is checked)
+        const originalCalculateTotals = window.calculateTotals;
+        window.calculateTotals = function() {
+            if (originalCalculateTotals) originalCalculateTotals();
+            
+            const payCheckbox = document.querySelector('input[name="add_payment"]');
+            if (payCheckbox && payCheckbox.checked) {
+                const currentTotal = parseFloat(document.getElementById('grandTotalDisplay').textContent.replace(/[^\d.-]/g, '')) || 0;
+                document.getElementById('paymentAmount').value = currentTotal.toFixed(2);
+            }
+        }
+
+        function checkCustomPaymentMethod(select) {
+            console.log('checkCustomPaymentMethod called', select.value);
+            if (select.value === 'add_new_method') {
+                document.getElementById('newPaymentMethodDiv').style.display = 'block';
+                document.getElementById('newMethodName').focus();
+            } else {
+                document.getElementById('newPaymentMethodDiv').style.display = 'none';
+            }
+        }
+
+        function cancelNewPaymentMethod() {
+            const select = document.getElementById('paymentMethodSelect');
+            document.getElementById('newPaymentMethodDiv').style.display = 'none';
+            document.getElementById('newMethodName').value = '';
+            select.selectedIndex = 0; // Reset to first option
+        }
+
+        function saveNewPaymentMethod() {
+            const newMethod = document.getElementById('newMethodName').value;
+            console.log('saveNewPaymentMethod', newMethod);
+            const select = document.getElementById('paymentMethodSelect');
+            
+            if (newMethod && newMethod.trim() !== "") {
+                $.ajax({
+                    url: '../../../ajax/add-payment-method.php',
+                    type: 'POST',
+                    data: { method_name: newMethod },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            const option = new Option(newMethod, newMethod);
+                            // Insert before the last option (+ Add New Method)
+                            const lastIndex = select.options.length - 1;
+                            select.add(option, select.options[lastIndex]);
+                            select.value = newMethod; // Select the new method
+                            
+                            // Hide input
+                            document.getElementById('newPaymentMethodDiv').style.display = 'none';
+                            document.getElementById('newMethodName').value = '';
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function() {
+                        alert("Error adding payment method.");
+                    }
+                });
+            } else {
+                alert("Please enter a valid name.");
+                document.getElementById('newMethodName').focus();
+            }
+        }
+    </script>
+    
     <style>
+
         /* Professional Invoice Layout */
         :root {
             --primary-color: #2563eb;
@@ -258,7 +285,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
             border-radius: 12px;
             box-shadow: var(--shadow-md);
             overflow: hidden;
-            width: 100%;
+            margin-bottom: 2rem;
         }
 
         /* Header Section */
@@ -303,17 +330,20 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
         }
 
         .form-field input,
-        .form-field select {
+        .form-field select,
+        .form-field textarea {
             padding: 0.75rem 1rem;
             border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 0.9375rem;
             transition: all 0.2s;
             background: white;
+            width: 100%;
         }
 
         .form-field input:focus,
-        .form-field select:focus {
+        .form-field select:focus,
+        .form-field textarea:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -355,6 +385,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
             border: 2px solid var(--border-color);
             border-radius: 12px;
             background: white;
+            margin-bottom: 1rem;
         }
 
         .items-table {
@@ -378,9 +409,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
             border-bottom: 2px solid var(--border-color);
             white-space: nowrap;
         }
-        .item-description{
-            display: none;
-        }
+
         .items-table td {
             padding: 0.75rem 1rem;
             border-bottom: 1px solid #f1f5f9;
@@ -432,6 +461,17 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
         .col-tax { width: 10%; }
         .col-total { width: 12%; }
         .col-action { width: 3%; }
+
+        /* Tracking Info */
+        .tracking-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .tracking-info input {
+            font-size: 0.8125rem !important;
+        }
 
         /* Action Buttons */
         .btn {
@@ -504,6 +544,14 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
             border: 2px dashed var(--primary-color);
             padding: 0.875rem 1.5rem;
             font-weight: 600;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
         .btn-add-item:hover {
@@ -610,9 +658,9 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
 
         .grand-total-row label,
         .grand-total-row span {
-            color: white;
-            font-size: 1.25rem;
-            font-weight: 700;
+            color: white !important;
+            font-size: 1.25rem !important;
+            font-weight: 700 !important;
         }
 
         /* Form Actions */
@@ -646,6 +694,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
             max-width: 90%;
             box-shadow: var(--shadow-lg);
             overflow: hidden;
+            border: none;
         }
 
         .modal-header {
@@ -694,17 +743,6 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
             opacity: 1;
         }
 
-        /* Utility Classes */
-        .tracking-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.375rem;
-        }
-
-        .tracking-info input {
-            font-size: 0.8125rem !important;
-        }
-
         /* Responsive */
         @media (max-width: 1024px) {
             .totals-grid {
@@ -734,7 +772,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                 <div class="invoice-form">
                     <!-- Header -->
                     <div class="invoice-header">
-                        <h2><i class="fas fa-file-invoice"></i> Create New Invoice</h2>
+                        <h2><i class="fas fa-file-invoice-dollar"></i> Create New Invoice</h2>
                         <div style="display: flex; gap: 10px;">
                             <button type="submit" form="invoiceForm" class="btn" style="background: white; color: var(--primary-color); font-weight: bold;">
                                 <i class="fas fa-save"></i> Create Invoice
@@ -744,25 +782,12 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                             </a>
                         </div>
                     </div>
-
-                    <form method="POST" id="invoiceForm" action="create">
+                    
+                    <form method="POST" id="invoiceForm" action="create.php">
                         <input type="hidden" name="action" value="create_invoice">
                         
                         <!-- Invoice Details Grid -->
                         <div class="form-grid">
-                            <div class="form-field" style="grid-column: 1 / -1;">
-                                <label>Load from Sales Order</label>
-                                <select id="salesOrderSelect" onchange="loadSalesOrderData(this)">
-                                    <option value="">Select Sales Order to populate data...</option>
-                                    <?php foreach ($salesOrders as $order): ?>
-                                        <option value="<?php echo $order['id']; ?>">
-                                            <?php echo htmlspecialchars($order['order_number'] . ' (' . date('d-M-Y', strtotime($order['order_date'])) . ') - ₹' . number_format($order['total_amount'], 2)); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <small>Select a Sales Order to auto-fill customer and items.</small>
-                            </div>
-                            
                             <div class="form-field">
                                 <label>Invoice Number *</label>
                                 <input type="text" name="invoice_number" value="<?php echo $nextInvoiceNumber; ?>" readonly>
@@ -775,7 +800,6 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                                     <option value="">Select Customer</option>
                                     <?php foreach ($customers as $customer): ?>
                                         <?php 
-                                            // Provide fallback if company_name is empty (or just whitespace)
                                             $displayName = trim($customer['company_name']);
                                             if (empty($displayName)) {
                                                 $displayName = $customer['contact_person'];
@@ -790,61 +814,59 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                             
                             <div class="form-field">
                                 <label>Invoice Date *</label>
-                                <input type="date" name="invoice_date" id="invoiceDate" value="<?php echo date('Y-m-d'); ?>" required>
+                                <input type="date" name="invoice_date" value="<?php echo date('Y-m-d'); ?>" required>
                             </div>
                             
                             <div class="form-field">
                                 <label>Due Date</label>
-                                <input type="date" name="due_date" value="<?php echo date('Y-m-d', strtotime('+7 days')); ?>" required>
+                                <input type="date" name="due_date" value="<?php echo date('Y-m-d', strtotime('+30 days')); ?>">
                             </div>
-                        </div>
 
-                        <div class="form-grid" style="border-top: 1px solid var(--border-color); padding-top: 2rem;">
-                             <div class="form-field">
+                            <div class="form-field">
                                 <label>Courier Name</label>
-                                <input type="text" name="courier_name" placeholder="e.g. FedEx, DHL, BlueDart">
+                                <input type="text" name="courier_name" placeholder="e.g. FedEx, DHL">
                             </div>
+
                             <div class="form-field">
                                 <label>Tracking ID</label>
                                 <input type="text" name="tracking_id" placeholder="Enter tracking number">
                             </div>
                         </div>
 
-                        <!-- Payment Option -->
-                        <div class="form-grid" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; margin-top: 1rem;">
-                            <div class="form-field" style="grid-column: 1 / -1;">
-                                <label style="display: flex; align-items: center; gap: 0.75rem; font-weight: 500; font-size: 1.1em; color: var(--text-color); cursor: pointer;">
-                                    <input type="checkbox" name="add_payment" id="add_payment" value="1" onchange="togglePaymentDetails()" style="width: 1.2rem; height: 1.2rem;">
-                                    Add Payment to Invoice
-                                </label>
-                            </div>
-                        </div>
-
-                        <div id="payment_details" style="display: none; background: var(--bg-light); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 2rem;">
-                            <div class="form-grid">
-                                <div class="form-field">
-                                    <label>Amount Paying <span class="required">*</span></label>
-                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                        <input type="number" step="0.01" name="payment_amount" id="payment_amount" placeholder="0.00" style="flex: 1;">
-                                        <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; white-space: nowrap; font-size: 0.9em; cursor: pointer;">
-                                            <input type="checkbox" id="pay_full_amount" checked onchange="toggleFullPayment()"> Pay Full
-                                        </label>
+                        <!-- Payment Section -->
+                        <div style="padding: 0 2rem; margin-bottom: 2rem;">
+                            <label style="display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer;">
+                                <input type="checkbox" name="add_payment" value="1" onchange="togglePaymentFields(this)" style="width: 20px; height: 20px;">
+                                ADD PAYMENT TO INVOICE
+                            </label>
+                            
+                            <div id="paymentFields" style="display: none; background: #f0fdf4; padding: 1.5rem; border-radius: 8px; margin-top: 1rem; border: 1px solid #bbf7d0;">
+                                <div class="form-grid" style="padding: 0; background: transparent; border: none; gap: 1rem;">
+                                    <div class="form-field">
+                                        <label>Payment Date</label>
+                                        <input type="date" name="payment_date" value="<?php echo date('Y-m-d'); ?>">
                                     </div>
-                                </div>
-                                <div class="form-field">
-                                    <label>Payment Method <span class="required">*</span></label>
-                                    <select name="payment_method" id="payment_method">
-                                        <option value="Cash">Cash</option>
-                                        <option value="UPI">UPI</option>
-                                        <option value="Bank Transfer">Bank Transfer</option>
-                                        <option value="Cheque">Cheque</option>
-                                        <option value="Card">Card Credit/Debit</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div class="form-field">
-                                    <label>Payment Notes</label>
-                                    <input type="text" name="payment_notes" id="payment_notes" placeholder="Transaction ID / Reference No.">
+                                    <div class="form-field">
+                                        <label>Amount (₹)</label>
+                                        <input type="number" name="payment_amount" id="paymentAmount" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-field">
+                                        <label>Payment Method</label>
+                                        <select name="payment_method" id="paymentMethodSelect" onchange="checkCustomPaymentMethod(this)">
+                                            <option value="">Select Method</option>
+                                            <?php foreach ($paymentMethods as $pm): ?>
+                                                <option value="<?php echo htmlspecialchars($pm['method_name']); ?>"><?php echo htmlspecialchars($pm['method_name']); ?></option>
+                                            <?php endforeach; ?>
+                                            <option value="add_new_method" style="font-weight: bold; color: var(--primary-color);">+ Add New Method</option>
+                                        </select>
+                                        <div id="newPaymentMethodDiv" style="display:none; margin-top: 10px; padding: 10px; background: white; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                            <input type="text" id="newMethodName" placeholder="Enter method name" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 5px;">
+                                            <div style="display: flex; gap: 5px; justify-content: flex-end;">
+                                                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="cancelNewPaymentMethod()">Cancel</button>
+                                                <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="saveNewPaymentMethod()">Save</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -873,7 +895,7 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                                     <tbody id="itemsBody">
                                         <tr class="item-row">
                                             <td>
-                                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                                <div style="display: flex; gap: 5px;">
                                                     <select name="items[0][product_id]" class="product-select" onchange="updateProductDetails(this, 0)" required style="flex: 1;">
                                                         <option value="">Select Product</option>
                                                         <?php foreach ($products as $product): ?>
@@ -881,14 +903,14 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                                                                     data-price="<?php echo $product['selling_price']; ?>"
                                                                     data-tax="<?php echo $product['tax_rate']; ?>"
                                                                     data-name="<?php echo htmlspecialchars($product['name']); ?>"
-                                                                    data-has-serial="<?php echo $product['has_serial_number']; ?>"
-                                                                    data-has-warranty="<?php echo $product['has_warranty']; ?>"
-                                                                    data-has-expiry="<?php echo $product['has_expiry_date']; ?>">
+                                                                    data-has-serial="<?php echo $product['has_serial_number'] ?? 0; ?>"
+                                                                    data-has-warranty="<?php echo $product['has_warranty'] ?? 0; ?>"
+                                                                    data-has-expiry="<?php echo $product['has_expiry_date'] ?? 0; ?>">
                                                                 <?php echo htmlspecialchars($product['product_code'] . ' - ' . $product['name']); ?>
                                                             </option>
                                                         <?php endforeach; ?>
                                                     </select>
-                                                    <button type="button" class="btn btn-success" onclick="openQuickAddModal()" title="Quick Add Product">
+                                                    <button type="button" class="btn btn-success" style="width: 38px; height: 38px; padding: 0;" onclick="openQuickAddModal()" title="Quick Add Product">
                                                         <i class="fas fa-plus"></i>
                                                     </button>
                                                     <input type="hidden" name="items[0][description]" class="item-description">
@@ -896,47 +918,33 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                                             </td>
                                             <td>
                                                 <div class="tracking-info">
-                                                    <input type="text" name="items[0][serial_number]" class="item-serial" placeholder="Serial/IMEI" style="display: none;" onblur="checkSerialAvailability(this)">
+                                                    <input type="text" name="items[0][serial_number]" class="item-serial" placeholder="Serial/IMEI" style="display: none;">
                                                     <input type="text" name="items[0][warranty_period]" class="item-warranty" placeholder="Warranty" style="display: none;">
                                                     <input type="date" name="items[0][expiry_date]" class="item-expiry" style="display: none;" title="Expiry Date">
                                                 </div>
                                             </td>
-                                            <td>
-                                                <input type="number" name="items[0][quantity]" class="item-quantity" value="1" step="1" min="0" onchange="calculateRow(this)" required>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][unit_price]" class="item-price" value="0" step="0.01" min="0" onchange="calculateRow(this)" required>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][discount_percent]" class="item-discount" value="0" step="0.01" min="0" max="100" onchange="calculateRow(this)">
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][tax_rate]" class="item-tax" value="0" step="0.01" min="0" onchange="calculateRow(this)">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="item-total" value="0" step="0.01" readonly>
-                                            </td>
-                                            <td>
-                                                <button type="button" class="btn btn-danger" onclick="removeRow(this)" title="Remove">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </td>
+                                            <td><input type="number" name="items[0][quantity]" class="item-quantity" value="1" step="1" min="1" onchange="calculateRow(this)" required></td>
+                                            <td><input type="number" name="items[0][unit_price]" class="item-price" value="0" step="0.01" min="0" onchange="calculateRow(this)" required></td>
+                                            <td><input type="number" name="items[0][discount_percent]" class="item-discount" value="0" step="0.01" min="0" max="100" onchange="calculateRow(this)"></td>
+                                            <td><input type="number" name="items[0][tax_rate]" class="item-tax" value="0" step="0.01" min="0" onchange="calculateRow(this)"></td>
+                                            <td><input type="number" class="item-total" value="0" step="0.01" readonly style="background-color: #f0f0f0;"></td>
+                                            <td><button type="button" class="btn btn-danger" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             
-                            <button type="button" class="btn btn-add-item" onclick="addRow()">
+                            <button type="button" class="btn-add-item" onclick="addRow()">
                                 <i class="fas fa-plus"></i> Add Item
                             </button>
                         </div>
                         
-                        <!-- Totals and Notes -->
+                        <!-- Totals Section -->
                         <div class="totals-wrapper">
                             <div class="totals-grid">
                                 <div class="notes-section">
                                     <label>Notes</label>
-                                    <textarea name="notes" placeholder="Additional notes or payment instructions..."></textarea>
+                                    <textarea name="notes" rows="3" placeholder="Additional notes..."></textarea>
                                 </div>
                                 
                                 <div class="totals-section">
@@ -960,162 +968,13 @@ $salesOrders = $db->fetchAll("SELECT id, order_number, order_date, total_amount 
                                         <label>Shipping Charges</label>
                                         <input type="number" name="shipping_charges" id="shippingCharges" value="0" step="0.01" min="0" onchange="calculateTotals()">
                                     </div>
-                                    <div class="summary-row total-row">
-                                        <span>Total</span>
+                                    <div class="total-row grand-total-row">
+                                        <label>Grand Total</label>
                                         <span id="grandTotalDisplay">₹0.00</span>
-                                    </div>
-                                    <div class="summary-row" style="color: #64748b; font-size: 0.9em; margin-top: 5px;">
-                                        <span>Round Off</span>
-                                        <span id="roundOffDisplay">₹0.00</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-
-
-                        <!-- Form Actions -->
-                        <div class="form-actions">
-                            <a href="javascript:void(0);" class="btn btn-secondary" onclick="window.history.back()">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Invoice
-                            </button>
-                        </div>
                     </form>
                 </div>
 
-    <!-- Quick Add Product Modal -->
-    <div id="quickAddProductModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Quick Add Product</h3>
-                <button type="button" class="close" onclick="closeQuickAddModal()">&times;</button>
-            </div>
-            
-            <form id="quickAddProductForm">
-                <div class="modal-body">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Product Name *</label>
-                            <input type="text" name="name" class="form-control" required placeholder="e.g. Wireless Mouse">
-                        </div>
-                        <div class="form-group">
-                            <label>Category</label>
-                            <div style="display: flex; gap: 5px;">
-                                <select name="category_id" id="quickAddCategorySelect" class="form-control" style="flex: 1;">
-                                    <option value="">Select Category</option>
-                                    <?php 
-                                    $categories = $db->fetchAll("SELECT * FROM product_categories WHERE is_active = 1 AND company_id = ? ORDER BY name", [$user['company_id']]);
-                                    foreach ($categories as $cat): ?>
-                                        <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <button type="button" class="btn btn-sm btn-info" onclick="openQuickAddCategoryModal()" title="Quick Add Category" style="padding: 0 10px;">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Unit of Measure *</label>
-                            <select name="uom_id" class="form-control" required>
-                                <?php 
-                                $uoms = $db->fetchAll("SELECT * FROM units_of_measure WHERE company_id = ? ORDER BY name", [$user['company_id']]);
-                                foreach ($uoms as $uom): ?>
-                                    <option value="<?php echo $uom['id']; ?>"><?php echo htmlspecialchars($uom['name'] . ' (' . $uom['symbol'] . ')'); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Product Type</label>
-                            <select name="product_type" class="form-control">
-                                <option value="Goods">Goods</option>
-                                <option value="Service">Service</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>HSN Code</label>
-                            <input type="text" name="hsn_code" class="form-control" placeholder="HSN/SAC">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Selling Price (₹) *</label>
-                            <input type="number" step="0.01" name="selling_price" class="form-control" required placeholder="0.00">
-                        </div>
-                        <div class="form-group">
-                            <label>Tax Rate (%)</label>
-                            <input type="number" step="0.01" name="tax_rate" class="form-control" value="0" placeholder="0">
-                        </div>
-                    </div>
-
-                    <div class="form-group" style="background: var(--bg-light); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                        <label style="margin-bottom: 0.75rem;">Tracking Options</label>
-                        <div style="display: flex; gap: 1.5rem;">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
-                                <input type="checkbox" name="has_serial_number" value="1"> Track Serial/IMEI
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
-                                <input type="checkbox" name="has_warranty" value="1"> Track Warranty
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: normal;">
-                                <input type="checkbox" name="has_expiry_date" value="1"> Track Expiry Date
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeQuickAddModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save Product
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Quick Add Category Modal -->
-    <div id="quickAddCategoryModal" class="modal">
-        <div class="modal-content" style="width: 500px;">
-            <div class="modal-header">
-                <h3>Quick Add Category</h3>
-                <button type="button" class="close" onclick="closeQuickAddCategoryModal()">&times;</button>
-            </div>
-            
-            <form id="quickAddCategoryForm">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Category Name *</label>
-                        <input type="text" name="name" class="form-control" required placeholder="e.g. Electronics">
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <textarea name="description" class="form-control" rows="3" placeholder="Optional description..."></textarea>
-                    </div>
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeQuickAddCategoryModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Save Category
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // Pass PHP data to JS
-        window.productsData = <?php echo json_encode($products); ?>;
-    </script>
-    </div> <!-- End of content-area -->
-    </main>
-</div> <!-- End of dashboard-wrapper -->
-</body>
-</html>

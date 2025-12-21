@@ -12,7 +12,6 @@ $subscription = new Subscription();
 $payment = new Payment();
 
 // Check if plan is selected
-// Check if plan is selected
 if (!isset($_SESSION['selected_plan']) && !isset($_GET['plan'])) {
     header('Location: select-plan.php');
     exit;
@@ -20,6 +19,20 @@ if (!isset($_SESSION['selected_plan']) && !isset($_GET['plan'])) {
 
 // Get Current User & Company
 $user = $auth->getCurrentUser();
+
+// Handle Pending User (New Registration)
+if (!$user && isset($_SESSION['pending_user_id'])) {
+    if ($auth->forceLogin($_SESSION['pending_user_id'])) {
+        $user = $auth->getCurrentUser(); // Refresh user after login
+    }
+}
+
+if (!$user) {
+    // Not logged in and no pending registration found
+    header('Location: ../auth/register.php');
+    exit;
+}
+
 $userId = $user['id'];
 $companyId = $user['company_id'];
 
@@ -27,7 +40,6 @@ if (!$companyId) {
     die("Company ID not found. Please contact support.");
 }
 
-// Check plan details
 // Check plan details
 $planName = $_GET['plan'] ?? $_SESSION['selected_plan'] ?? '';
 $billingCycle = $_GET['billing'] ?? $_SESSION['selected_billing'] ?? 'monthly';
@@ -53,48 +65,72 @@ if (!$planValid) {
 
 // Check if company has used trial
 $hasUsedTrial = $subscription->hasUsedTrial($companyId);
+$isTrialMode = (!$hasUsedTrial && isset($_GET['trial']) && $_GET['trial'] == '1');
 
-// Handle Payment
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id'])) {
-    $paymentId = $_POST['razorpay_payment_id'];
-    $orderId = $_POST['razorpay_order_id'];
-    $signature = $_POST['razorpay_signature'];
 
-    try {
-        if ($payment->verifyPaymentSignature($orderId, $paymentId, $signature)) {
-            // Create subscription (Active immediately)
-            // Pass company_id as first arg, user_id as last arg
-            $subscriptionId = $subscription->createSubscription($companyId, $planName, $billingCycle, 'active', $userId);
-            
-            // Record transaction
-            $payment->recordTransaction($subscriptionId, [
-                'payment_id' => $paymentId,
-                'order_id' => $orderId,
-                'amount' => $price,
-                'currency' => 'INR',
-                'status' => 'success',
-                'method' => $_POST['payment_method'] ?? 'razorpay'
-            ]);
-            
-            // Activate subscription (already active but updates razorpay/dates if needed)
-            $subscription->activateSubscription($subscriptionId);
-            
-            // Clear session variables but keep user_id if logged in
-            unset($_SESSION['pending_user_id']);
-            unset($_SESSION['selected_plan']);
-            unset($_SESSION['selected_billing']);
-            
-            // Redirect to success page
-            header('Location: payment-success.php?subscription_id=' . $subscriptionId);
-            exit;
-        } else {
-            throw new Exception("Payment verification failed");
-        }
-    } catch (Exception $e) {
-        header('Location: payment-failed.php?error=' . urlencode($e->getMessage()));
+// -------------------------------------------------------------------------
+// PAYTM CALLBACK HANDLING
+// -------------------------------------------------------------------------
+if (isset($_POST["CHECKSUMHASH"])) {
+    $paytmChecksum = $_POST["CHECKSUMHASH"];
+    $isValidChecksum = $payment->verifyPaytmSignature($_POST, $paytmChecksum);
+
+    if ($isValidChecksum == "TRUE" && $_POST["STATUS"] == "TXN_SUCCESS") {
+        
+        $orderId = $_POST['ORDERID'];
+        $txnId = $_POST['TXnid'];
+        $txnAmount = $_POST['TXNAMOUNT'];
+        
+        // Success
+         // Create subscription (Active immediately)
+        $subscriptionId = $subscription->createSubscription($companyId, $planName, $billingCycle, 'active', $userId);
+        
+        // Record transaction
+        $payment->recordTransaction($subscriptionId, [
+            'txn_id' => $txnId,
+            'order_id' => $orderId,
+            'amount' => $txnAmount,
+            'currency' => 'INR',
+            'status' => 'success',
+            'method' => 'Paytm'
+        ]);
+        
+        $subscription->activateSubscription($subscriptionId);
+        
+        unset($_SESSION['pending_user_id']);
+        unset($_SESSION['selected_plan']);
+        unset($_SESSION['selected_billing']);
+        
+        header('Location: payment-success.php?subscription_id=' . $subscriptionId);
+        exit;
+
+    } else {
+        // Failed
+        $errorMsg = $_POST['RESPMSG'] ?? "Payment verification failed";
+        header('Location: payment-failed.php?error=' . urlencode($errorMsg));
         exit;
     }
 }
+
+// -------------------------------------------------------------------------
+// PREPARE PAYTM PARAMETERS (For Form)
+// -------------------------------------------------------------------------
+if ($hasUsedTrial && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    // Generate Order ID
+    $orderId = "ORDS" . rand(10000,99999999);
+    $custId = "CUST" . $userId;
+    
+    // Get Params
+    $paytmParams = $payment->getPaytmParams($orderId, $price, $custId, $user['email'] ?? '', '');
+    
+    // Generate Checksum
+    $paytmChecksum = $payment->generatePaytmSignature($paytmParams);
+    
+    // Initial Form URL
+    $transactionURL = "https://securegw-stage.paytm.in/order/process"; 
+    // For Production use: https://securegw.paytm.in/order/process
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -106,7 +142,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Include Landing CSS -->
     <link rel="stylesheet" href="../../public/assets/css/landing.css">
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
         body {
             background-color: var(--bg-light);
@@ -264,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
             }
             .checkout-sidebar {
                 position: static;
-                order: -1; /* Show summary first on mobile? Or maybe keep it below. Let's keep distinct. */
+                order: -1; 
                 order: 1; 
             }
         }
@@ -307,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
             <div style="margin-bottom: 30px;">
                 <h4 style="margin-bottom: 15px; color: var(--text-primary);">Secure Payment</h4>
                 <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6;">
-                    We use industry-standard encryption to protect your data. Your payment information is processed securely by Razorpay.
+                    We use industry-standard encryption to protect your data. Your payment information is processed securely by <strong>Paytm</strong>.
                 </p>
             </div>
 
@@ -354,7 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
 
             <?php if ($hasUsedTrial): ?>
                 <!-- Upgrading / Re-subscribing: Payment Only -->
-                <button class="btn-pay" onclick="initiatePayment()">
+                <button class="btn-pay" onclick="payWithPaytm()">
                     <i class="fas fa-credit-card"></i>
                     Pay ₹<?php echo number_format($price, 2); ?>
                 </button>
@@ -375,12 +410,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
     <!-- Footer -->
     <?php require_once '../../includes/public_footer.php'; ?>
 
-    <form method="POST" id="paymentForm">
-        <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
-        <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
-        <input type="hidden" name="razorpay_signature" id="razorpay_signature">
-        <input type="hidden" name="payment_method" id="payment_method">
+    <?php if ($hasUsedTrial && isset($transactionURL)): ?>
+    <!-- HIDDEN FORM FOR PAYTM -->
+    <form method="post" action="<?php echo $transactionURL; ?>" name="f1" id="paytmForm">
+        <?php foreach($paytmParams as $name => $value) {
+            echo '<input type="hidden" name="' . $name .'" value="' . $value . '">';
+        } ?>
+        <input type="hidden" name="CHECKSUMHASH" value="<?php echo $paytmChecksum ?>">
     </form>
+    <?php endif; ?>
 
     <script>
         function startTrial() {
@@ -389,32 +427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['razorpay_payment_id']
             window.location.href = 'create-trial-subscription.php?plan=' + plan + '&billing=' + billing;
         }
 
-        // Razorpay payment
-        function initiatePayment() {
-            var options = {
-                "key": "<?php echo $payment->getRazorpayKey(); ?>",
-                "amount": <?php echo $price * 100; ?>,
-                "currency": "INR",
-                "name": "Acculynce",
-                "description": "<?php echo $plan['plan_name']; ?> Plan Subscription",
-                "handler": function (response){
-                    document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
-                    document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
-                    document.getElementById('razorpay_signature').value = response.razorpay_signature;
-                    document.getElementById('paymentForm').submit();
-                },
-                "prefill": {
-                    "email": "<?php echo $_SESSION['pending_user_email'] ?? $_SESSION['email'] ?? ''; ?>"
-                },
-                "theme": {
-                    "color": "#4f46e5"
-                }
-            };
-            var rzp = new Razorpay(options);
-            rzp.on('payment.failed', function (response){
-                alert("Payment Failed: " + response.error.description);
-            });
-            rzp.open();
+        function payWithPaytm() {
+            document.getElementById("paytmForm").submit();
         }
     </script>
 </body>

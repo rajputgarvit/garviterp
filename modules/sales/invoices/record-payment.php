@@ -14,7 +14,7 @@ $user = $auth->getCurrentUser();
 $invoiceId = $_GET['invoice_id'] ?? null;
 
 if (!$invoiceId) {
-    header('Location: payment-tracking.php');
+    header('Location: ../../reports/payment-tracking.php');
     exit;
 }
 
@@ -27,7 +27,7 @@ $invoice = $db->fetchOne("
 ", [$invoiceId, $user['company_id']]);
 
 if (!$invoice) {
-    header('Location: payment-tracking.php?error=Invoice not found');
+    header('Location: ../../reports/payment-tracking.php?error=Invoice not found');
     exit;
 }
 
@@ -324,7 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <h2><i class="fas fa-money-bill-wave"></i> Record Payment</h2>
                             <p>Invoice #<?php echo htmlspecialchars($invoice['invoice_number']); ?> • <?php echo htmlspecialchars($invoice['company_name']); ?></p>
                         </div>
-                        <a href="payment-tracking.php" class="btn" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                        <a href="../../reports/payment-tracking.php" class="btn" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3);">
                             <i class="fas fa-arrow-left"></i> Back
                         </a>
                     </div>
@@ -382,7 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                                 
                                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                                    <a href="payment-tracking.php" class="btn btn-secondary">Cancel</a>
+                                    <a href="../../reports/payment-tracking.php" class="btn btn-secondary">Cancel</a>
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-save"></i> Record Payment
                                     </button>

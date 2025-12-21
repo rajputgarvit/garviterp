@@ -68,8 +68,8 @@ $items = $db->fetchAll("
 ", [$invoiceId]);
 
 // Determine Tax Type (Intra-state or Inter-state)
-$companyState = strtolower(trim($companySettings['state']));
-$customerState = strtolower(trim($invoice['state']));
+$companyState = strtolower(trim($companySettings['state'] ?? ''));
+$customerState = strtolower(trim($invoice['state'] ?? ''));
 $isIntraState = ($companyState === $customerState);
 
 // Calculate Totals (Pre-calculation for Header/Footer)
@@ -78,9 +78,13 @@ $totalCGST = 0;
 $totalSGST = 0;
 $totalIGST = 0;
 
+$taxDetails = []; // To store tax wise breakdown
+
 foreach ($items as $item) {
-    $lineTotal = $item['line_total'];
-    $taxRate = $item['tax_rate'];
+    $lineTotal = floatval($item['line_total'] ?? 0);
+    $taxRate = floatval($item['tax_rate'] ?? 0);
+    $quantity = floatval($item['quantity'] ?? 0);
+    $unitPrice = floatval($item['unit_price'] ?? 0);
     
     // Back-calculate Taxable Value
     $taxableValue = $lineTotal / (1 + ($taxRate / 100));
@@ -97,81 +101,50 @@ foreach ($items as $item) {
         $igstAmount = $taxAmount;
         $totalIGST += $igstAmount;
     }
+
+    // Accumulate tax details
+    $rateKey = (string)$taxRate;
+    if (!isset($taxDetails[$rateKey])) {
+        $taxDetails[$rateKey] = [
+            'rate' => $taxRate,
+            'taxable' => 0,
+            'cgst' => 0,
+            'sgst' => 0,
+            'igst' => 0,
+            'tax' => 0
+        ];
+    }
+    $taxDetails[$rateKey]['taxable'] += $taxableValue;
+    $taxDetails[$rateKey]['tax'] += $taxAmount;
+    if ($isIntraState) {
+        $taxDetails[$rateKey]['cgst'] += $taxAmount/2;
+        $taxDetails[$rateKey]['sgst'] += $taxAmount/2;
+    } else {
+        $taxDetails[$rateKey]['igst'] += $taxAmount;
+    }
 }
+
+// Generate Tax Summary String
+$taxSummaryParts = [];
+foreach ($taxDetails as $rate => $detail) {
+    $part = "Sale @{$rate}% = " . number_format($detail['taxable'], 2);
+    if ($isIntraState) {
+        $part .= ", CGST = " . number_format($detail['cgst'], 2);
+        $part .= ", SGST = " . number_format($detail['sgst'], 2);
+    } else {
+        $part .= ", IGST = " . number_format($detail['igst'], 2);
+    }
+    $taxSummaryParts[] = $part;
+}
+$taxSummaryString = implode(" | ", $taxSummaryParts);
+
 
 // Calculate Payment Status
 $paidAmount = floatval($invoice['paid_amount'] ?? 0);
 $totalAmount = floatval($invoice['total_amount']);
 $dueDate = $invoice['due_date'];
 $invoiceStatus = $invoice['status'];
-
-// Use payment_status from database if available, otherwise calculate
-$dbPaymentStatus = $invoice['payment_status'] ?? '';
-
-// Determine payment status
-$paymentStatus = '';
-$statusColor = '';
-$statusBgColor = '';
-
-// If payment_status is set in database, use it
-if (!empty($dbPaymentStatus)) {
-    $paymentStatus = strtoupper($dbPaymentStatus);
-    
-    // Set colors based on status
-    switch ($paymentStatus) {
-        case 'DRAFT':
-            $statusColor = '#666';
-            $statusBgColor = '#f0f0f0';
-            break;
-        case 'PAID':
-            $statusColor = '#fff';
-            $statusBgColor = '#28a745'; // Green
-            break;
-        case 'PARTIALLY PAID':
-            $statusColor = '#fff';
-            $statusBgColor = '#ffc107'; // Yellow/Orange
-            break;
-        case 'OVERDUE':
-            $statusColor = '#fff';
-            $statusBgColor = '#dc3545'; // Red
-            break;
-        case 'UNPAID':
-        default:
-            $statusColor = '#fff';
-            $statusBgColor = '#6c757d'; // Gray
-            break;
-    }
-} else {
-    // Fallback: Auto-calculate if not set in database
-    if ($invoiceStatus === 'Draft') {
-        $paymentStatus = 'DRAFT';
-        $statusColor = '#666';
-        $statusBgColor = '#f0f0f0';
-    } elseif ($paidAmount >= $totalAmount) {
-        $paymentStatus = 'PAID';
-        $statusColor = '#fff';
-        $statusBgColor = '#28a745'; // Green
-    } elseif ($paidAmount > 0 && $paidAmount < $totalAmount) {
-        $paymentStatus = 'PARTIALLY PAID';
-        $statusColor = '#fff';
-        $statusBgColor = '#ffc107'; // Yellow/Orange
-    } else {
-        // Check if overdue
-        $today = date('Y-m-d');
-        if ($dueDate < $today) {
-            $paymentStatus = 'OVERDUE';
-            $statusColor = '#fff';
-            $statusBgColor = '#dc3545'; // Red
-        } else {
-            $paymentStatus = 'UNPAID';
-            $statusColor = '#fff';
-            $statusBgColor = '#6c757d'; // Gray
-        }
-    }
-}
-
 $balanceDue = $totalAmount - $paidAmount;
-
 
 // Function to convert number to words
 function numberToWords($number) {
@@ -200,448 +173,401 @@ $amountInWords = 'Rupees ' . trim(numberToWords(intval($invoice['total_amount'])
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - <?php echo $invoice['invoice_number']; ?> - <?php echo APP_NAME; ?></title>
-    <link rel="stylesheet" href="../../../public/assets/css/style.css">
-    <script src="../../../public/assets/js/modules/sales/invoices.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Invoice - <?php echo $invoice['invoice_number']; ?></title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         @page {
             size: A4;
             margin: 10mm;
         }
         
-        .invoice-box {
-            max-width: 210mm;
-            margin: auto;
-            background: #fff;
-            font-family: 'Inter', sans-serif;
-            font-size: 10pt;
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 10pt; /* Slightly larger for readability */
             line-height: 1.3;
             color: #000;
+            background: #fff;
         }
-        .invoice-box table {
+        
+        /* The main box */
+        .main-container {
+            border: 1px solid #000;
+            width: 100%;
+            max-width: 210mm; /* A4 Width */
+            margin: 0 auto;
+        }
+
+        /* Generic Table reset */
+        table {
             width: 100%;
             border-collapse: collapse;
         }
-        .invoice-box th, 
-        .invoice-box td {
+        
+        td, th {
             border: 1px solid #000;
-            padding: 6px 8px;
+            padding: 4px; /* Comfortable padding */
             vertical-align: top;
         }
-        .invoice-box .no-border {
-            border: none !important;
-        }
-        .invoice-box .header-table td {
-            border: none;
-        }
-        .invoice-box .title {
-            font-size: 24pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            text-align: right;
-            color: #000;
-        }
-        .invoice-box .company-name {
-            font-size: 16pt;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .invoice-box .text-right { text-align: right; }
-        .invoice-box .text-center { text-align: center; }
-        .invoice-box .text-bold { font-weight: bold; }
-        .invoice-box .bg-gray { background-color: #f0f0f0; }
+
+        /* Helpers */
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+        .no-border { border: none !important; }
+
+        /* --- Design Matching Reference --- */
         
-        .invoice-box .section-header {
-            background-color: #e0e0e0;
+       
+        .top-header-row td {
             font-weight: bold;
-            text-transform: uppercase;
-            padding: 5px 10px;
+            border-bottom: 1px solid #000;
+        }
+
+        /* 2. Company Section */
+        .company-section {
+            text-align: center;
+            padding: 8px;
+            border-bottom: 1px solid #000;
+        }
+        .company-name { font-size: 14pt; font-weight: bold; margin-bottom: 5px; }
+        .company-addr { font-size: 9pt; }
+
+        /* 3. Info Grid */
+        .billing-header {
+            font-weight: bold;
+            padding: 2px 5px;
             border-bottom: 1px solid #000;
         }
         
-        .print-actions {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .print-actions .btn {
-            padding: 10px 20px;
-            background: var(--primary-color, #000);
-            color: #fff;
-            text-decoration: none;
-            border-radius: 4px;
-            display: inline-block;
-            margin: 0 5px;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-        }
-        .print-actions .btn:hover { 
-            opacity: 0.9;
+        .info-cell {
+            width: 50%;
+            padding: 0;
+            vertical-align: top;
         }
         
+        /* Nesting for Info to ensure alignment */
+        .info-table td { border: none; padding: 2px 5px; } 
+        .info-table tr td:first-child { font-weight: bold; width: 110px; } /* Labels */
+        
+        /* 4. Items Table Header */
+        .items-header th {
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        /* Items Container - Fixed Height */
+        .items-container {
+            height: 500px; /* Approx 13-14cm */
+            border-bottom: 1px solid #000; 
+            overflow: hidden; /* Ensure no scrollbars print */
+        }
+        
+        /* Items Table Specifics */
+        .items-table { height: 100%; }
+        .items-table th { border-bottom: 1px solid #000; height: 30px; }
+        .items-table td { 
+            border-bottom: none; 
+            border-top: none; 
+            padding: 4px;
+        }
+        /* Vertical lines */
+        .items-table td { border-right: 1px solid #000; }
+        .items-table td:last-child { border-right: none; }
+        
+        /* Filler Row logic */
+        .filler-row td { height: 100%; }
+
+        /* 5. Total Bar */
+        .total-bar {
+            font-weight: bold;
+            text-align: right;
+            border-bottom: 1px solid #000;
+            padding: 5px;
+        }
+        
+        /* 6. Footer (Amount Words + Tax + Terms + Bank) */
+        .amount-words-row {
+            border-bottom: 1px solid #000;
+            padding: 5px;
+            font-weight: bold;
+        }
+        
+        .footer-grid-td { width: 50%; padding: 0; }
+        
+        .footer-headers {
+            font-weight: bold;
+            border-bottom: 1px solid #000;
+            padding: 2px 5px;
+        }
+        
+        .terms-content { padding: 5px; font-size: 9pt; height: 100px; }
+        
+        /* Signature */
+        .signature-block {
+            text-align: right; 
+            padding: 5px; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between;
+        }
+
+        /* Print Stuff */
         @media print {
-            .dashboard-wrapper .sidebar,
-            .top-header,
-            .print-actions { 
-                display: none !important; 
-            }
-            .main-content {
-                margin-left: 0 !important;
-                padding: 0 !important;
-            }
-            .content-area {
-                padding: 0 !important;
-            }
-            body { 
-                padding: 0;
-                background: #fff;
-            }
+            .print-actions { display: none; }
+            body { margin: 0; background-color: #fff; -webkit-print-color-adjust: exact; }
+            .main-container { border: 1px solid #000; width: 100%; margin: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="dashboard-wrapper">
-        <?php include INCLUDES_PATH . '/sidebar.php'; ?>
-        
-        <main class="main-content">
-            <?php include INCLUDES_PATH . '/header.php'; ?>
-            
-            <div class="content-area">
-                <div class="print-actions">
-                    <button onclick="window.print()" class="btn">
-                        <i class="fas fa-print"></i> Print Invoice
-                    </button>
-                    <a href="index" class="btn">
-                        <i class="fas fa-arrow-left"></i> Back to Invoices
-                    </a>
-                </div>
+    <div class="print-actions">
+        <button onclick="window.print()" class="btn" style="padding:10px; background:#000; color:#fff; cursor:pointer;">Print Invoice</button>
+        <a href="index" class="btn" style="padding:10px; background:#000; color:#fff; text-decoration:none;">Back</a>
+    </div>
 
-                <div class="invoice-box">
-        <!-- Header -->
-        <table cellpadding="0" cellspacing="0">
-            <tr>
-                <td colspan="2" class="no-border" style="padding: 20px;">
-                    <table class="header-table">
-                        <tr>
-                            <td width="60%">
-                                <?php if (!empty($companySettings['print_logo_on_invoice']) && $companySettings['print_logo_on_invoice'] == 1 && !empty($companySettings['logo_path'])): ?>
-                                    <div style="margin-bottom: 10px;">
-                                        <img src="<?php echo BASE_URL . htmlspecialchars($companySettings['logo_path']); ?>" alt="Company Logo" style="max-height: 60px;">
-                                    </div>
-                                <?php endif; ?>
-                                <div class="company-name"><?php echo htmlspecialchars($companySettings['company_name'] ?? ''); ?></div>
-                                <div><?php echo htmlspecialchars($companySettings['address_line1'] ?? ''); ?></div>
-                                <?php if (!empty($companySettings['address_line2'])): ?>
-                                    <div><?php echo htmlspecialchars($companySettings['address_line2']); ?></div>
-                                <?php endif; ?>
-                                <div><?php echo htmlspecialchars($companySettings['city'] ?? ''); ?>, <?php echo htmlspecialchars($companySettings['state'] ?? ''); ?> - <?php echo htmlspecialchars($companySettings['postal_code'] ?? ''); ?></div>
-                                <div style="margin-top: 5px;"><strong>GSTIN:</strong> <?php echo htmlspecialchars($companySettings['gstin'] ?? ''); ?></div>
-                                <div><strong>Email:</strong> <?php echo htmlspecialchars($companySettings['email'] ?? ''); ?></div>
-                            </td>
-                            <td width="40%" class="text-right">
-                                <div class="title">TAX INVOICE</div>
-                                <table style="margin-top: 10px; width: 100%; border: 1px solid #000;">
-                                    <tr>
-                                        <td class="text-bold bg-gray" width="40%">Invoice No:</td>
-                                        <td class="text-bold"><?php echo htmlspecialchars($invoice['invoice_number']); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-bold bg-gray">Date:</td>
-                                        <td><?php echo date('d-M-Y', strtotime($invoice['invoice_date'])); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-bold bg-gray">Due Date:</td>
-                                        <td><?php echo date('d-M-Y', strtotime($invoice['due_date'])); ?></td>
-                                    </tr>
-                                    <?php if (!empty($invoice['courier_name'])): ?>
-                                    <tr>
-                                        <td class="text-bold bg-gray">Courier:</td>
-                                        <td><?php echo htmlspecialchars($invoice['courier_name']); ?></td>
-                                    </tr>
-                                    <?php endif; ?>
-                                    <?php if (!empty($invoice['tracking_id'])): ?>
-                                    <tr>
-                                        <td class="text-bold bg-gray">Tracking:</td>
-                                        <td><?php echo htmlspecialchars($invoice['tracking_id']); ?></td>
-                                    </tr>
-                                    <?php endif; ?>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
+    <div class="main-container">
+        <!-- 1. Top Strip -->
+        <table class="no-border">
+            <tr class="top-header-row">
+                <td style="width: 20%; border-right: none;">Page 1</td>
+                <td style="width: 60%; text-align: center; border-left: none; border-right: none;" class="uppercase">Tax Invoice</td>
+                <td style="width: 20%; text-align: right; border-left: none;">Original Copy</td>
             </tr>
+        </table>
 
-            <!-- Bill To -->
-            <tr>
-                <td colspan="2" style="padding: 0; border-top: 1px solid #000;">
-                    <div class="section-header">Bill To</div>
-                    <table style="width: 100%;">
-                        <?php 
-                            // Determine display name (Company Name or Contact Person)
-                            $displayName = trim($invoice['company_name']);
-                            if (empty($displayName)) {
-                                $displayName = $invoice['contact_person'];
-                            }
-                        ?>
-                        <tr>
-                            <td width="100%" class="no-border" style="padding: 10px;">
-                                <div class="text-bold" style="font-size: 11pt;"><?php echo htmlspecialchars($displayName); ?></div>
-                                <div><?php echo htmlspecialchars($invoice['address_line1'] ?? ''); ?></div>
-                                <?php if ($invoice['address_line2']): ?>
-                                    <div><?php echo htmlspecialchars($invoice['address_line2']); ?></div>
-                                <?php endif; ?>
-                                <div><?php echo htmlspecialchars($invoice['city'] ?? ''); ?>, <?php echo htmlspecialchars($invoice['state'] ?? ''); ?> - <?php echo htmlspecialchars($invoice['postal_code'] ?? ''); ?></div>
-                                <div style="margin-top: 5px;"><strong>GSTIN:</strong> <?php echo htmlspecialchars($invoice['customer_gstin'] ?? 'N/A'); ?></div>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+        <!-- 2. Company Header -->
+        <div class="company-section">
+            <div class="company-name"><?php echo htmlspecialchars($companySettings['company_name']); ?></div>
+            <div class="company-addr">
+                <?php echo htmlspecialchars($companySettings['address_line1']); ?>, <?php echo htmlspecialchars($companySettings['city']); ?>, <?php echo htmlspecialchars($companySettings['state']); ?> - <?php echo htmlspecialchars($companySettings['postal_code'] ?? ''); ?><br>
+                GSTIN - <?php echo htmlspecialchars($companySettings['gstin']); ?> | PAN - <?php echo htmlspecialchars($companySettings['pan'] ?? ''); ?>
+            </div>
+        </div>
 
-            <!-- Items -->
+        <!-- 3. Billing & Invoice Details Grid -->
+        <table class="info-table">
             <tr>
-                <td colspan="2" style="padding: 0;">
-                    <table style="width: 100%; border-top: 1px solid #000;">
-                        <thead>
-                            <tr class="bg-gray">
-                                <th width="5%" class="text-center">#</th>
-                                <th width="30%">Item Description</th>
-                                <th width="10%" class="text-center">HSN/SAC</th>
-                                <th width="5%" class="text-right">Qty</th>
-                                <th width="10%" class="text-right">Rate</th>
-                                <th width="10%" class="text-right">Taxable</th>
-                                <?php if ($isIntraState): ?>
-                                    <th width="10%" class="text-right">CGST</th>
-                                    <th width="10%" class="text-right">SGST</th>
-                                <?php else: ?>
-                                    <th width="10%" class="text-right">IGST</th>
-                                <?php endif; ?>
-                                <th width="10%" class="text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                            $sr = 1;
-                            // Variables already calculated at top
-                            
-                            foreach ($items as $item): 
-                                $quantity = $item['quantity'];
-                                $unitPrice = $item['unit_price'];
-                                $taxRate = $item['tax_rate'];
-                                $lineTotal = $item['line_total'];
-                                
-                                // Back-calculate Taxable Value from Line Total (assuming Line Total is inclusive)
-                                // Formula: Taxable = Total / (1 + TaxRate/100)
-                                $taxableValue = $lineTotal / (1 + ($taxRate / 100));
-                                $taxAmount = $lineTotal - $taxableValue;
-                                
-                                // No need to sum totals here anymore
-                                
-                                if ($isIntraState) {
-                                    $cgstRate = $taxRate / 2;
-                                    $sgstRate = $taxRate / 2;
-                                    $cgstAmount = $taxAmount / 2;
-                                    $sgstAmount = $taxAmount / 2;
-                                } else {
-                                    $igstRate = $taxRate;
-                                    $igstAmount = $taxAmount;
-                                }
+                <!-- Left: Billing Details -->
+                <td class="info-cell" style="border-right: 1px solid #000;">
+                    <div class="billing-header">Billing Details</div>
+                    <div style="padding: 5px;">
+                        <div class="text-bold"><?php echo htmlspecialchars(trim($invoice['company_name']) ?: $invoice['contact_person']); ?></div>
+                        <div>GSTIN: <?php echo htmlspecialchars($invoice['customer_gstin'] ?? 'N/A'); ?></div>
+                        <div style="margin-top: 5px;">
+                            Address: <?php 
+                                $addrParts = [
+                                    $invoice['address_line1'] ?? '',
+                                    $invoice['address_line2'] ?? '',
+                                    $invoice['city'] ?? '',
+                                    $invoice['state'] ?? '',
+                                    $invoice['postal_code'] ?? ''
+                                ];
+                                echo htmlspecialchars(implode(', ', array_filter(array_map('trim', $addrParts)))); 
                             ?>
-                            <tr>
-                                <td class="text-center"><?php echo $sr++; ?></td>
-                                <td>
-                                    <div class="text-bold"><?php echo htmlspecialchars($item['product_name']); ?></div>
-                                    <?php if (!empty($item['serial_number'])): ?>
-                                        <div style="font-size: 8pt; color: #777;">Serial/IMEI: <?php echo htmlspecialchars($item['serial_number']); ?></div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($item['warranty_period'])): ?>
-                                        <div style="font-size: 8pt; color: #777;">Warranty: <?php echo htmlspecialchars($item['warranty_period']); ?></div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($item['expiry_date'])): ?>
-                                        <div style="font-size: 8pt; color: #777;">Expiry: <?php echo date('d-M-Y', strtotime($item['expiry_date'])); ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center"><?php echo htmlspecialchars($item['hsn_code'] ?? ''); ?></td>
-                                <td class="text-right"><?php echo number_format($quantity, 2); ?> <?php echo htmlspecialchars($item['uom'] ?? ''); ?></td>
-                                <td class="text-right"><?php echo number_format($unitPrice, 2); ?></td>
-                                <td class="text-right"><?php echo number_format($taxableValue, 2); ?></td>
-                                
-                                <?php if ($isIntraState): ?>
-                                    <td class="text-right">
-                                        <div style="font-size: 8pt;"><?php echo number_format($cgstRate, 2); ?>%</div>
-                                        <div><?php echo number_format($cgstAmount, 2); ?></div>
-                                    </td>
-                                    <td class="text-right">
-                                        <div style="font-size: 8pt;"><?php echo number_format($sgstRate, 2); ?>%</div>
-                                        <div><?php echo number_format($sgstAmount, 2); ?></div>
-                                    </td>
-                                <?php else: ?>
-                                    <td class="text-right">
-                                        <div style="font-size: 8pt;"><?php echo number_format($igstRate, 2); ?>%</div>
-                                        <div><?php echo number_format($igstAmount, 2); ?></div>
-                                    </td>
-                                <?php endif; ?>
-                                
-                                <td class="text-right text-bold"><?php echo number_format($lineTotal, 2); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                            
-                            <!-- Filler rows to maintain height if needed, but for now we let it be dynamic -->
-                        </tbody>
-                    </table>
-                </td>
-            </tr>
-            
-            <!-- Spacing after products -->
-            <tr>
-                <td colspan="2" class="no-border" style="height: 20px;"></td>
-            </tr>
-
-            <!-- Footer / Totals -->
-            <tr>
-                <td width="60%" style="vertical-align: top; padding: 0; border-right: 1px solid #000;">
-                    <table style="width: 100%; height: 100%;">
-                        <tr>
-                            <td class="no-border" style="padding: 10px;">
-                                <div class="text-bold">Amount in Words:</div>
-                                <div style="margin-bottom: 15px; font-style: italic;"><?php echo $amountInWords; ?></div>
-                                
-                                <div class="text-bold" style="border-bottom: 1px solid #eee; padding-bottom: 2px; margin-bottom: 5px;">Bank Details</div>
-                                <table class="no-border" style="width: 100%; font-size: 9pt; line-height:0">
-                                    <tr><td class="no-border" width="30%">Bank Name:</td><td class="no-border text-bold"><?php echo htmlspecialchars($companySettings['bank_name']); ?></td></tr>
-                                    <tr><td class="no-border">A/c No:</td><td class="no-border text-bold"><?php echo htmlspecialchars($companySettings['bank_account_number']); ?></td></tr>
-                                    <tr><td class="no-border">IFSC Code:</td><td class="no-border text-bold"><?php echo htmlspecialchars($companySettings['bank_ifsc']); ?></td></tr>
-                                    <tr><td class="no-border">Branch:</td><td class="no-border text-bold"><?php echo htmlspecialchars($companySettings['bank_branch']); ?></td></tr>
-                                </table>
-                                
-                                <div class="text-bold" style="margin-top: 15px; border-bottom: 1px solid #eee; padding-bottom: 2px; margin-bottom: 5px;">Terms & Conditions</div>
-                                <div style="font-size: 8pt; line-height: 1.4;">
-                                    <?php 
-                                    $terms = $companySettings['terms_conditions'] ?? '';
-                                    if (empty(trim($terms))) {
-                                        // Default terms if none are set
-                                        $terms = "1. Payment is due within the specified due date.\n";
-                                        $terms .= "2. Please make all cheques payable to " . ($companySettings['company_name'] ?? 'Company Name') . ".\n";
-                                        $terms .= "3. Goods once sold will not be taken back or exchanged.\n";
-                                        $terms .= "4. All disputes are subject to local jurisdiction only.\n";
-                                        $terms .= "5. Interest @ 18% p.a. will be charged on delayed payments.";
-                                    }
-                                    echo nl2br(htmlspecialchars($terms));
-                                    ?>
-                                </div>
-                                <div style="
-                                        font-size: 9pt; 
-                                        line-height: 1.6; 
-                                        font-weight: 600;
-                                        color: #444;
-                                        padding: 10px 14px;
-                                        border-top: 1px solid #ddd;
-                                        margin-top: 25px;
-                                        text-align: center;
-                                        font-family: 'Segoe UI', Tahoma, sans-serif;
-                                        letter-spacing: 0.3px;
-                                    ">
-                                    <?php 
-                                        $footer = $companySettings['invoice_footer'] ?? '';
-                                        if (empty(trim($footer))) {
-                                            $footer = "Thank you for your business with us.";
-                                        }
-                                        echo nl2br(htmlspecialchars($footer));
-                                    ?>
-                                </div>
-
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-                <td width="40%" style="vertical-align: top; padding: 0;">
-                    <table style="width: 100%;">
-                        <tr>
-                            <td class="text-right bg-gray" style="border-top: none; border-left: none;">Subtotal</td>
-                            <td class="text-right" style="border-top: none; border-right: none;"><?php echo number_format($invoice['subtotal'], 2); ?></td>
-                        </tr>
-                        <?php if ($invoice['discount_amount'] > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none;">Discount</td>
-                            <td class="text-right" style="border-right: none;">- <?php echo number_format($invoice['discount_amount'], 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if ($totalCGST > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none;">CGST</td>
-                            <td class="text-right" style="border-right: none;"><?php echo number_format($totalCGST, 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if ($totalSGST > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none;">SGST</td>
-                            <td class="text-right" style="border-right: none;"><?php echo number_format($totalSGST, 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if ($totalIGST > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none;">IGST</td>
-                            <td class="text-right" style="border-right: none;"><?php echo number_format($totalIGST, 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php 
-                        // Calculate Total Tax from calculated values
-                        $totalTax = $totalCGST + $totalSGST + $totalIGST;
-                        if ($totalTax > 0): 
-                        ?>
-                        <tr>
-                            <td class="text-right bg-gray text-bold" style="border-left: none;">Total Tax</td>
-                            <td class="text-right text-bold" style="border-right: none;"><?php echo number_format($totalTax, 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if (isset($invoice['shipping_charges']) && $invoice['shipping_charges'] > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none;">Shipping Charges</td>
-                            <td class="text-right" style="border-right: none;"><?php echo number_format($invoice['shipping_charges'], 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if (isset($invoice['round_off_amount']) && $invoice['round_off_amount'] != 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none;">Round Off</td>
-                            <td class="text-right" style="border-right: none;"><?php echo ($invoice['round_off_amount'] > 0 ? '+' : '') . number_format($invoice['round_off_amount'], 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <tr>
-                            <td class="text-right bg-gray text-bold" style="border-left: none; border-bottom: none;">Total</td>
-                            <td class="text-right text-bold" style="border-right: none; border-bottom: none; font-size: 12pt;"><?php echo number_format($invoice['total_amount'], 2); ?></td>
-                        </tr>
-                        <?php if ($paidAmount > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray" style="border-left: none; border-bottom: none; border-top: 1px solid #000;">Paid Amount</td>
-                            <td class="text-right" style="border-right: none; border-bottom: none; border-top: 1px solid #000; color: #28a745; font-weight: bold;">- <?php echo number_format($paidAmount, 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                        <?php if ($balanceDue > 0): ?>
-                        <tr>
-                            <td class="text-right bg-gray text-bold" style="border-left: none; border-bottom: none; <?php echo $paidAmount > 0 ? '' : 'border-top: 1px solid #000;'; ?>">Balance Due</td>
-                            <td class="text-right text-bold" style="border-right: none; border-bottom: none; <?php echo $paidAmount > 0 ? '' : 'border-top: 1px solid #000;'; ?> color: <?php echo $paymentStatus === 'OVERDUE' ? '#dc3545' : '#000'; ?>; font-size: 11pt;"><?php echo number_format($balanceDue, 2); ?></td>
-                        </tr>
-                        <?php endif; ?>
-                    </table>
-                    
-                    <div style="padding: 20px 10px 10px 10px; text-align: center; margin-top: 40px;">
-                        <div style="margin-bottom: 40px;">For <?php echo htmlspecialchars($companySettings['company_name']); ?></div>
-                        <div style="border-top: 1px solid #000; display: inline-block; padding-top: 5px; width: 80%;">
-                            Authorized Signatory<br>
-                            <?php if (!empty($invoice['created_by_name'])): ?>
-                                <small>(<?php echo htmlspecialchars($invoice['created_by_name']); ?>)</small>
-                            <?php endif; ?>
                         </div>
                     </div>
+                </td>
+                
+                <!-- Right: Invoice Info -->
+                <td class="info-cell">
+                    <table class="no-border">
+                        <!-- Invoice No -->
+                        <tr>
+                            <td class="bg-peach" style="width: 120px; font-weight: bold; border-bottom:1px solid #000; border-right:1px solid #000;">Invoice No</td>
+                            <td style="border-bottom:1px solid #000;"> <?php echo htmlspecialchars($invoice['invoice_number']); ?></td>
+                        </tr>
+                        <!-- Invoice Date -->
+                        <tr>
+                            <td class="bg-peach" style="width: 120px; font-weight: bold; border-bottom:1px solid #000; border-right:1px solid #000;">Invoice Date</td>
+                            <td style="border-bottom:1px solid #000;"> <?php echo date('d-M-y', strtotime($invoice['invoice_date'])); ?></td>
+                        </tr>
+                        <!-- Due Date -->
+                        <tr>
+                            <td class="bg-peach" style="width: 120px; font-weight: bold; border-bottom:1px solid #000; border-right:1px solid #000;">Due Date</td>
+                            <td style="border-bottom:1px solid #000;"> <?php echo date('d-M-y', strtotime($invoice['due_date'])); ?></td>
+                        </tr>
+                        <!-- Place of Supply -->
+                        <tr>
+                            <td class="bg-peach" style="width: 120px; font-weight: bold; border-bottom:1px solid #000; border-right:1px solid #000;">Place of Supply</td>
+                            <td style="border-bottom:1px solid #000;"> <?php echo htmlspecialchars($invoice['state'] ?? '-'); ?></td>
+                        </tr>
+                        <!-- Carrier Info -->
+                        <?php if(!empty($invoice['courier_name'])): ?>
+                        <tr>
+                            <td class="bg-peach" style="width: 120px; font-weight: bold; border-bottom:1px solid #000; border-right:1px solid #000;">Carrier</td>
+                            <td style="border-bottom:1px solid #000;"> <?php echo htmlspecialchars($invoice['courier_name']); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <!-- Tracking ID -->
+                        <?php if(!empty($invoice['tracking_id'])): ?>
+                        <tr>
+                            <td class="bg-peach" style="width: 120px; font-weight: bold; border-bottom:1px solid #000; border-right:1px solid #000;">Tracking ID</td>
+                            <td style="border-bottom:1px solid #000;"> <?php echo htmlspecialchars($invoice['tracking_id']); ?></td>
+                        </tr>
+                        <?php endif; ?>
+                        <!-- Rev Charge -->
+                        <tr>
+                            <td style="width: 120px; font-weight: bold; border-right:1px solid #000;">Reverse Charge</td>
+                            <td> No</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 4. Items Section -->
+        <div class="items-container" style="height: 105mm;"> <!-- Reduced height for totals -->
+            <table class="items-table">
+                <tr class="items-header">
+                    <th style="width: 5%;">Sr.</th>
+                    <th style="width: 35%;">Item Description</th>
+                    <th style="width: 10%;">HSN/SAC</th>
+                    <th style="width: 8%;">Qty</th>
+                    <th style="width: 7%;">Unit</th>
+                    <th style="width: 10%;">Rate</th>
+                    <th style="width: 8%;">Disc</th>
+                    <th style="width: 7%;">GST</th>
+                    <th style="width: 10%;">Amount (₹)</th>
+                </tr>
+                
+                <?php 
+                $sr = 1;
+                foreach ($items as $item): 
+                    $lineTotal = floatval($item['line_total']);
+                    $taxRate = floatval($item['tax_rate']);
+                ?>
+                <tr class="items-row">
+                    <td class="text-center"><?php echo $sr++; ?></td>
+                    <td style="text-align: left;">
+                        <strong><?php echo htmlspecialchars($item['product_name']); ?></strong>
+                    </td>
+                    <td class="text-center"><?php echo htmlspecialchars($item['hsn_code'] ?? ''); ?></td>
+                    <td class="text-center"><?php echo floatval($item['quantity']); ?></td>
+                    <td class="text-center"><?php echo htmlspecialchars($item['uom'] ?? 'N.A.'); ?></td>
+                    <td class="text-right"><?php echo number_format($item['unit_price'], 2); ?></td>
+                    <td class="text-center"><?php echo ($item['discount_percent'] > 0) ? floatval($item['discount_percent']).'%' : ''; ?></td>
+                    <td class="text-center"><?php echo floatval($taxRate); ?>%</td>
+                    <td class="text-right"><?php echo number_format($lineTotal, 2); ?></td>
+                </tr>
+                <?php endforeach; ?>
+                
+                <!-- Filler Row -->
+                <tr class="filler-row">
+                    <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- 5. Detailed Totals & Bottom Info -->
+        <div style="border-bottom: 1px solid #000; overflow: hidden;">
+            <!-- Left Side: Amount Words & Tax Summary -->
+            <div style="width: 60%; float: left; border-right: 1px solid #000; height: 100%;">
+                 <div class="amount-words-row" style="border-bottom: 1px solid #000; padding: 5px; font-weight: bold;">
+                    Rs. <?php echo ucwords(strtolower(trim(numberToWords(intval($invoice['total_amount']))))); ?> only
+                </div>
+                <!-- Tax Summary -->
+                <div style="padding: 5px; font-size: 8pt; background-color: #eee;">
+                     <?php echo $taxSummaryString; ?> <br> Total Tax = <?php echo number_format($totalCGST + $totalSGST + $totalIGST, 2); ?>
+                </div>
+
+                <!-- Bank Details (Moved from Footer) -->
+                <div style="padding: 5px; border-top: 1px solid #000; font-size: 9pt;">
+                    <div style="font-weight: bold; margin-bottom: 2px;">Account Number: <?php echo htmlspecialchars($companySettings['bank_account_number']); ?></div>
+                    <strong>Bank:</strong> <?php echo htmlspecialchars($companySettings['bank_name']); ?> <br>
+                    <strong>IFSC:</strong> <?php echo htmlspecialchars($companySettings['bank_ifsc']); ?> <br>
+                    <strong>Branch:</strong> <?php echo htmlspecialchars($companySettings['bank_branch']); ?>
+                </div>
+            </div>
+
+            <!-- Right Side: Totals -->
+            <table style="width: 40%; float: right; border-collapse: collapse;">
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">Subtotal</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($invoice['subtotal'] ?? $totalTaxable, 2); ?></td>
+                </tr>
+                <!-- Taxes -->
+                <?php if($totalCGST > 0): ?>
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">CGST</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($totalCGST, 2); ?></td>
+                </tr>
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">SGST</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($totalSGST, 2); ?></td>
+                </tr>
+                <?php endif; ?>
+                <?php if($totalIGST > 0): ?>
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">IGST</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($totalIGST, 2); ?></td>
+                </tr>
+                <?php endif; ?>
+                
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">Total Tax</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($totalCGST + $totalSGST + $totalIGST, 2); ?></td>
+                </tr>
+
+                <?php if(!empty($invoice['shipping_charges']) && $invoice['shipping_charges'] > 0): ?>
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">Shipping Charges</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($invoice['shipping_charges'], 2); ?></td>
+                </tr>
+                <?php endif; ?>
+
+                <tr class="bg-peach">
+                    <td style="text-align: right; padding: 4px 5px; border-bottom: 1px solid #000; font-weight: bold;">Total</td>
+                    <td style="text-align: right; padding: 4px 5px; border-bottom: 1px solid #000; font-weight: bold;"><?php echo number_format($invoice['total_amount'], 2); ?></td>
+                </tr>
+                
+                <?php if($invoice['paid_amount'] > 0): ?>
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000;">Paid Amount</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: 1px solid #000; font-weight: bold;">- <?php echo number_format($invoice['paid_amount'], 2); ?></td>
+                </tr>
+                <tr>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: none; font-weight: bold;">Balance Due</td>
+                    <td style="text-align: right; padding: 2px 5px; border-bottom: none; font-weight: bold;"><?php echo number_format($balanceDue, 2); ?></td>
+                </tr>
+                <?php endif; ?>
+            </table>
+            <div style="clear: both;"></div>
+        </div>
+
+        <!-- 7. Footer Grid (Terms/Bank | Signature) -->
+        <table class="info-table">
+            <tr>
+                <td class="footer-grid-td" style="width: 75%; border-right: 1px solid #000;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td class="footer-headers" style="width: 100%;">Terms and Conditions</td>
+                        </tr>
+                        <tr>
+                            <td class="terms-content" style="vertical-align: top;">
+                                E & O.E.<br>
+                                <?php 
+                                $terms = explode("\n", $companySettings['terms_conditions'] ?? '');
+                                $i = 1;
+                                foreach($terms as $term) { if(trim($term)) echo $i++ . ". " . htmlspecialchars(trim($term)) . "<br>"; }
+                                ?>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                
+                <td class="footer-grid-td" style="width: 25%;">
+                     <div class="signature-block">
+                        <div style="font-weight: bold;">For <?php echo htmlspecialchars($companySettings['company_name']); ?></div>
+                        <div style="font-weight: bold;">Authorized Signatory</div>
+                     </div>
                 </td>
             </tr>
         </table>
     </div>
-            </div>
-        </main>
-    </div>
+
 </body>
+
 </html>
