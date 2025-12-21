@@ -11,7 +11,10 @@ if (!defined('BASE_URL')) {
             <img src="<?php echo BASE_URL; ?>public/assets/images/logo.svg" alt="Acculynce Systems"
                 style="max-width: 150px; max-height: 60px; height: auto; mix-blend-mode: multiply;" />
         </a>
-        <ul class="nav-menu">
+        <div class="mobile-menu-toggle" id="mobileMenuToggle">
+            <i class="fas fa-bars"></i>
+        </div>
+        <ul class="nav-menu" id="navMenu">
             <li><a href="<?php echo BASE_URL; ?>public/pages/features.php">Features</a></li>
             <li><a href="<?php echo BASE_URL; ?>public/pages/pricing.php">Pricing</a></li>
             <li><a href="<?php echo BASE_URL; ?>public/contact.php">Contact</a></li>

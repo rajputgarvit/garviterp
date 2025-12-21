@@ -119,6 +119,21 @@ class Auth {
         
         // Super Admin has all permissions
         if ($this->hasRole('Super Admin')) return true;
+
+        // 1. Check Plan Limits first
+        // If the plan doesn't allow the module, you explicitly can't have permission for actions within it
+        // Only check for standard modules (sales, crm, etc) - ignore special permissions if they don't map to 'module_'
+        // We'll optimistically check existing modules.
+        
+        // List of known modules to check against subscription
+        $restrictedModules = ['sales', 'crm', 'inventory', 'purchases', 'hrm', 'accounting', 'production', 'reports'];
+        if (in_array($module, $restrictedModules)) {
+             require_once __DIR__ . '/Subscription.php';
+             $sub = new Subscription($_SESSION['company_id'] ?? null);
+             if (!$sub->canAccess('module_' . $module)) {
+                 return false;
+             }
+        }
         
         $result = $this->db->fetchOne(
             "SELECT COUNT(*) as count 
@@ -138,13 +153,24 @@ class Auth {
         // Super Admin has access to everything
         if ($this->hasRole('Super Admin')) return true;
 
-        // Company Admin (Role ID 2) has access to everything
-        // We can check role name 'Admin' or ID 2. Let's check role name for clarity if possible, 
-        // but roles are stored as comma separated string in session or we can query.
-        // For now, let's assume if they have 'Admin' role they see everything.
+        // 1. Check Plan Limits first (Applies to everyone effectively)
+        require_once __DIR__ . '/Subscription.php';
+        $sub = new Subscription($_SESSION['company_id'] ?? null);
+        
+        // Map simplified module names to feature codes
+        // 'sales' -> 'module_sales'
+        $featureCode = 'module_' . $module;
+        
+        // If the plan does not include this module, deny access
+        // (Unless it's not a module-type feature, but we assume inputs are 'sales', 'crm' etc)
+        if (!$sub->canAccess($featureCode)) {
+            return false;
+        }
+
+        // 2. Company Admin (Role ID 2) has access to everything enabled in plan
         if ($this->hasRole('Admin')) return true;
 
-        // Check specific module access
+        // 3. Regular User: Check specific module access
         $access = $this->db->fetchOne(
             "SELECT id FROM user_module_access WHERE user_id = ? AND module = ?",
             [$_SESSION['user_id'], $module]

@@ -4,12 +4,14 @@ require_once '../../config/config.php';
 require_once '../../classes/Auth.php';
 require_once '../../classes/Database.php';
 require_once '../../classes/ReferenceData.php';
+require_once '../../classes/Subscription.php';
 
 $auth = new Auth();
 // Auth::enforceGlobalRouteSecurity() handles permissions.
 $db = Database::getInstance();
 $user = $auth->getCurrentUser();
 $refData = new ReferenceData();
+$subscription = new Subscription($user['company_id']);
 
 $states = $refData->getStates();
 
@@ -65,6 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 break;
                 
             case 'add_user':
+                // Check Subscription Limit
+                $usage = $subscription->getUsageStatus('max_users');
+                if ($usage['status'] === 'exceeded' || $usage['current'] >= $usage['limit']) {
+                    throw new Exception("User limit reached ({$usage['limit']}). Please upgrade your plan to add more users.");
+                }
+
                 // Check if username exists
                 $existing = $db->fetchOne("SELECT id FROM users WHERE username = ? OR email = ?", 
                     [$_POST['username'], $_POST['email']]);
@@ -103,6 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     
+                    // Increment Usage
+                    $subscription->incrementUsage('max_users');
+
                     $success = 'User added successfully!';
                 }
                 break;
@@ -126,6 +137,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->update('warehouses', ['is_active' => 0], 'id = ? AND company_id = ?', [$_POST['id'], $user['company_id']]);
                 $success = 'Warehouse deactivated successfully!';
                 break;
+
+            case 'generate_credentials':
+                $name = trim($_POST['name']);
+                if (empty($name)) {
+                    throw new Exception("App Name is required");
+                }
+
+                // Generate Credentials
+                $clientId = 'cil_' . bin2hex(random_bytes(16)); // 32 chars + prefix
+                $clientSecret = 'cs_' . bin2hex(random_bytes(32)); // 64 chars + prefix
+                $secretHash = password_hash($clientSecret, PASSWORD_DEFAULT);
+
+                $db->insert('api_credentials', [
+                    'company_id' => $user['company_id'],
+                    'user_id' => $user['id'],
+                    'name' => $name,
+                    'client_id' => $clientId,
+                    'client_secret_hash' => $secretHash,
+                    'status' => 'active'
+                ]);
+
+                // Return Secret to UI (One-time view)
+                $success = 'Credentials generated successfully!';
+                $newCredential = [
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret
+                ];
+                break;
+
+            case 'revoke_credential':
+                $db->update('api_credentials', ['status' => 'inactive'], 'id = ? AND company_id = ?', [$_POST['id'], $user['company_id']]);
+                $success = 'Credential revoked successfully!';
+                break;
         }
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
@@ -141,6 +185,7 @@ $users = $db->fetchAll("SELECT u.*, GROUP_CONCAT(r.name) as roles FROM users u L
 $roles = $db->fetchAll("SELECT * FROM roles ORDER BY name");
 $leave_types = $db->fetchAll("SELECT * FROM leave_types ORDER BY name");
 $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY display_order, name");
+$api_credentials = $db->fetchAll("SELECT * FROM api_credentials WHERE company_id = ? AND status = 'active' ORDER BY created_at DESC", [$user['company_id']]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,17 +199,23 @@ $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY d
         
     <script>
         function switchTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
+            // Hide all sections
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
             });
-            document.querySelectorAll('.tab').forEach(btn => {
-                btn.classList.remove('active');
+            document.querySelectorAll('.settings-nav-item').forEach(item => {
+                item.classList.remove('active');
             });
             
-            // Show selected tab
+            // Show selected section
             document.getElementById(tabName).classList.add('active');
-            event.target.closest('.tab').classList.add('active');
+            
+            // Activate sidebar item
+            // Find the button that called this function
+            const buttons = document.querySelectorAll(`button[onclick="switchTab('${tabName}')"]`);
+            if (buttons.length > 0) {
+                buttons[0].classList.add('active');
+            }
         }
         
         function openModal(modalId) {
@@ -183,47 +234,69 @@ $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY d
         }
     </script>
     <style>
-        .tabs {
+        .settings-container {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            min-height: 600px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .settings-sidebar {
+            background: #f8fafc;
+            border-right: 1px solid var(--border-color);
+            padding: 24px 0;
+        }
+
+        .settings-nav-item {
+            width: 100%;
             display: flex;
-            gap: 10px;
-            border-bottom: 2px solid var(--border-color);
-            margin-bottom: 30px;
-            overflow-x: auto;
-        }
-        
-        .tab {
-            padding: 12px 24px;
-            background: none;
-            border: none;
-            border-bottom: 3px solid transparent;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 24px;
             color: var(--text-secondary);
-            transition: all 0.3s ease;
-            white-space: nowrap;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: none;
+            text-align: left;
+            border-left: 3px solid transparent;
+            font-size: 14px;
         }
-        
-        .tab:hover {
+
+        .settings-nav-item:hover {
+            background: #f1f5f9;
+            color: var(--text-primary);
+        }
+
+        .settings-nav-item.active {
+            background: white;
             color: var(--primary-color);
+            border-left-color: var(--primary-color);
+            font-weight: 600;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         }
         
-        .tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
+        .settings-content {
+            padding: 40px;
+            background: white;
         }
-        
+
         .tab-content {
             display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
             animation: fadeIn 0.3s ease;
         }
-        
+
+        .tab-content.active {
+            display: block;
+        }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
         
@@ -344,19 +417,27 @@ $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY d
                     </div>
                 <?php endif; ?>
                 
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">System Settings</h3>
-                    </div>
-                    
-                    <div class="tabs">
-                        <button class="tab active" onclick="switchTab('users')">
-                            <i class="fas fa-users"></i> Users & Roles
+                <div style="margin-bottom: 30px;">
+                    <h2 style="font-size: 24px; font-weight: 700; color: var(--text-primary);">Settings</h2>
+                    <p style="color: var(--text-secondary);">Manage your workspace, users, and integrations.</p>
+                </div>
+
+                <div class="settings-container">
+                    <!-- Sidebar Navigation -->
+                    <div class="settings-sidebar">
+                        <button class="settings-nav-item active" onclick="switchTab('users')">
+                            <i class="fas fa-users" style="width: 20px;"></i> Users & Roles
                         </button>
-                        <button class="tab" onclick="switchTab('data-management')">
-                            <i class="fas fa-database"></i> Data Management
+                        <button class="settings-nav-item" onclick="switchTab('data-management')">
+                            <i class="fas fa-database" style="width: 20px;"></i> Data Management
+                        </button>
+                        <button class="settings-nav-item" onclick="switchTab('api-access')">
+                            <i class="fas fa-key" style="width: 20px;"></i> API Access
                         </button>
                     </div>
+
+                    <!-- Content Area -->
+                    <div class="settings-content">
                     
                     <div class="info-box" style="margin-bottom: 20px; background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 4px;">
                         <i class="fas fa-info-circle" style="color: #3b82f6;"></i>
@@ -584,7 +665,69 @@ $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY d
                             </form>
                         </div>
                     </div>
-                </div>
+                <!-- API Access Tab -->
+                <div id="api-access" class="tab-content">
+                    <div class="card" style="background: white; padding: 30px; border-radius: 10px; border: 1px solid var(--border-color);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="margin-bottom: 5px; color: var(--text-primary);"><i class="fas fa-key"></i> API Credentials</h3>
+                                <p style="color: var(--text-secondary); font-size: 14px;">Manage API keys for accessing the ERP programmatically.</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="openModal('generateCredentialsModal')">
+                                <i class="fas fa-plus"></i> Generate New Key
+                            </button>
+                        </div>
+
+                        <?php if (empty($api_credentials)): ?>
+                            <div style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 8px;">
+                                <i class="fas fa-key" style="font-size: 48px; color: #cbd5e1; margin-bottom: 20px;"></i>
+                                <h4 style="color: var(--text-primary); margin-bottom: 10px;">No Active Credentials</h4>
+                                <p style="color: var(--text-secondary); margin-bottom: 20px;">You haven't generated any API keys yet.</p>
+                                <button class="btn btn-primary btn-sm" onclick="openModal('generateCredentialsModal')">Generate Your First Key</button>
+                            </div>
+                        <?php else: ?>
+                            <div style="overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border-color);">
+                                            <th style="text-align: left; padding: 12px; color: var(--text-secondary); font-size: 13px; font-weight: 600;">APP NAME</th>
+                                            <th style="text-align: left; padding: 12px; color: var(--text-secondary); font-size: 13px; font-weight: 600;">CLIENT ID</th>
+                                            <th style="text-align: left; padding: 12px; color: var(--text-secondary); font-size: 13px; font-weight: 600;">CREATED</th>
+                                            <th style="text-align: right; padding: 12px; color: var(--text-secondary); font-size: 13px; font-weight: 600;">ACTIONS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($api_credentials as $cred): ?>
+                                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                                <td style="padding: 15px 12px; font-weight: 500; color: var(--text-primary);">
+                                                    <?php echo htmlspecialchars($cred['name']); ?>
+                                                </td>
+                                                <td style="padding: 15px 12px;">
+                                                    <code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; color: #475569; font-size: 13px;">
+                                                        <?php echo htmlspecialchars($cred['client_id']); ?>
+                                                    </code>
+                                                </td>
+                                                <td style="padding: 15px 12px; color: var(--text-secondary); font-size: 14px;">
+                                                    <?php echo date('M d, Y', strtotime($cred['created_at'])); ?>
+                                                </td>
+                                                <td style="padding: 15px 12px; text-align: right;">
+                                                    <form method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to revoke this key? This action cannot be undone.');">
+                                                        <input type="hidden" name="action" value="revoke_credential">
+                                                        <input type="hidden" name="id" value="<?php echo $cred['id']; ?>">
+                                                        <button type="submit" class="btn btn-sm" style="background: #fee2e2; color: #ef4444; border: none;">
+                                                            <i class="fas fa-trash-alt"></i> Revoke
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    </div> <!-- End .settings-content -->
+                </div> <!-- End .settings-container -->
             </div>
         </main>
     </div>
@@ -946,6 +1089,72 @@ $payroll_components = $db->fetchAll("SELECT * FROM payroll_components ORDER BY d
             </form>
         </div>
     </div>
+    
+    <!-- Generate API Credentials Modal -->
+    <div id="generateCredentialsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Generate API Credentials</h2>
+                <button class="close-modal" onclick="closeModal('generateCredentialsModal')">&times;</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="generate_credentials">
+                <div class="form-group">
+                    <label>App Name / Description *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. ERP Integration, Mobile App" required>
+                    <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                        Give this key a name so you can identify it later.
+                    </small>
+                </div>
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('generateCredentialsModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Generate Key</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Credential Success Modal -->
+    <?php if (isset($newCredential)): ?>
+    <div id="newCredentialModal" class="modal" style="display: block;">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #f0fdf4; border-bottom: 1px solid #bbf7d0;">
+                <h2 style="color: #166534;"><i class="fas fa-check-circle"></i> Credentials Generated</h2>
+                <button class="close-modal" onclick="closeModal('newCredentialModal')">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div class="alert" style="background: #fff7ed; border-left: 4px solid #f97316; margin-bottom: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #f97316;"></i>
+                    <strong>Important:</strong> Copy your Client Secret now. You will validly see it only once!
+                </div>
+
+                <div class="form-group">
+                    <label>Client ID</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" class="form-control" value="<?php echo $newCredential['client_id']; ?>" readonly>
+                        <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('<?php echo $newCredential['client_id']; ?>')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Client Secret</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" class="form-control" value="<?php echo $newCredential['client_secret']; ?>" readonly style="font-family: monospace; color: #dc2626;">
+                        <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('<?php echo $newCredential['client_secret']; ?>')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn btn-primary" onclick="closeModal('newCredentialModal')">I have copied my secret</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     
 
 </body>
