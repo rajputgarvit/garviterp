@@ -115,3 +115,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+// Global function for features toggle
+window.toggleFeatures = function(btn) {
+    const wrapper = btn.previousElementSibling;
+    const isCollapsed = wrapper.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        wrapper.classList.remove('collapsed');
+        btn.innerHTML = 'Show Less <i class="fas fa-chevron-up"></i>';
+    } else {
+        wrapper.classList.add('collapsed');
+        btn.innerHTML = 'Show More <i class="fas fa-chevron-down"></i>';
+        // Optional smooth scroll correction if needed
+    }
+};

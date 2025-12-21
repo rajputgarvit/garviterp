@@ -327,14 +327,26 @@ try {
                                 <span class="period">/mo</span>
                             </div>
                             
-                            <ul class="features-list">
-                                <?php foreach ($features as $feature): ?>
-                                    <li><i class="fas fa-check"></i> <?php echo htmlspecialchars($feature); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
+                            <?php 
+                                $featureCount = count($features);
+                                $needsCollapse = $featureCount > 6;
+                            ?>
+                            <div class="features-wrapper <?php echo $needsCollapse ? 'collapsed' : ''; ?>">
+                                <ul class="features-list">
+                                    <?php foreach ($features as $feature): ?>
+                                        <li><i class="fas fa-check"></i> <?php echo htmlspecialchars($feature); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
                             
-                            <a href="../modules/auth/register.php" class="btn-plan <?php echo !$isPopular ? 'btn-outline' : ''; ?>">
-                                <?php echo $actionText; ?>
+                            <?php if ($needsCollapse): ?>
+                                <button class="show-more-btn" onclick="toggleFeatures(this)">
+                                    Show More <i class="fas fa-chevron-down"></i>
+                                </button>
+                            <?php endif; ?>
+                            
+                            <a href="#" onclick="goToRequest('<?php echo htmlspecialchars($plan['plan_name']); ?>'); return false;" class="btn-plan <?php echo !$isPopular ? 'btn-outline' : ''; ?>">
+                                Request Plan
                             </a>
                         </div>
                     <?php endforeach; ?>
@@ -360,6 +372,29 @@ try {
     <!-- Footer -->
     <?php require_once __DIR__ . '/../includes/public_footer.php'; ?>
 
+    <script>
+        function goToRequest(planName) {
+            const toggle = document.getElementById('monthlyLabel');
+            // If toggle exists and is active, it's monthly.
+            const cycle = (toggle && toggle.classList.contains('active')) ? 'monthly' : 'annual';
+            // Adjust path since landing.php is in public/ root, request_plan is in public/pages/
+            window.location.href = `pages/request_plan.php?plan=${encodeURIComponent(planName)}&cycle=${cycle}`;
+        }
+
+        function toggleFeatures(btn) {
+            const wrapper = btn.previousElementSibling;
+            const isCollapsed = wrapper.classList.contains('collapsed');
+            
+            if (isCollapsed) {
+                wrapper.classList.remove('collapsed');
+                btn.innerHTML = 'Show Less <i class="fas fa-chevron-up"></i>';
+            } else {
+                wrapper.classList.add('collapsed');
+                btn.innerHTML = 'Show More <i class="fas fa-chevron-down"></i>';
+                // Optional: Scroll back up slightly if needed, but not strictly required
+            }
+        }
+    </script>
 </body>
 
 </html>

@@ -3,329 +3,326 @@ require_once __DIR__ . '/Database.php';
 
 class Subscription {
     private $db;
+    private $companyId;
+    private $features = null;
 
-    public function __construct() {
+    public function __construct($companyId = null) {
         $this->db = Database::getInstance();
+        $this->companyId = $companyId;
     }
 
     /**
-     * Create a new subscription for a user
+     * Check if company has an active subscription
+     * @param int|null $companyId
+     * @return bool
      */
-    /**
-     * Create a new subscription for a company
-     */
-    public function createSubscription($companyId, $planName, $billingCycle = 'monthly', $status = 'trial', $userId = null) {
-        // Get plan details
-        $plan = $this->db->fetchOne(
-            "SELECT * FROM subscription_plans WHERE plan_name = ? AND is_active = 1",
-            [$planName]
+    public function hasActiveSubscription($companyId = null) {
+        $cid = $companyId ?? $this->companyId;
+        if (!$cid) return false;
+
+        $sub = $this->db->fetchOne(
+            "SELECT id FROM subscriptions WHERE company_id = ? AND status IN ('active', 'trial') AND (current_period_end IS NULL OR current_period_end >= NOW())", 
+            [$cid]
         );
-
-        if (!$plan) {
-            throw new Exception("Invalid subscription plan");
-        }
-
-        // Calculate price based on billing cycle
-        $price = ($billingCycle === 'annual') ? $plan['annual_price'] : $plan['monthly_price'];
-
-        // Determine dates based on status
-        if ($status === 'trial') {
-            $trialEndsAt = date('Y-m-d H:i:s', strtotime('+14 days'));
-            $currentPeriodStart = date('Y-m-d H:i:s');
-        } else {
-            $trialEndsAt = null;
-            $currentPeriodStart = date('Y-m-d H:i:s');
-        }
         
-        $currentPeriodEnd = ($billingCycle === 'annual') 
-            ? date('Y-m-d H:i:s', strtotime('+1 year'))
-            : date('Y-m-d H:i:s', strtotime('+1 month'));
-
-        // Cancel any existing active/trial subscriptions to ensure only one is active
-        $this->db->update('subscriptions', 
-            [
-                'status' => 'cancelled', 
-                'cancelled_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ], 
-            "company_id = ? AND status IN ('active', 'trial')", 
-            [$companyId]
-        );
-
-        // Create subscription
-        $subscriptionId = $this->db->insert('subscriptions', [
-            'company_id' => $companyId,
-            'user_id' => $userId, // Optional: Purchaser ID
-            'plan_name' => $planName,
-            'plan_price' => $price,
-            'billing_cycle' => $billingCycle,
-            'status' => $status,
-            'trial_ends_at' => $trialEndsAt,
-            'current_period_start' => $currentPeriodStart,
-            'current_period_end' => $currentPeriodEnd
-        ]);
-
-        return $subscriptionId;
+        return (bool)$sub;
     }
 
     /**
-     * Get subscription for a company
+     * Get detailed subscription stats for header/dashboard
+     * @param int|null $companyId
+     * @return array|false
      */
-    public function getSubscription($companyId) {
-        return $this->db->fetchOne(
-            "SELECT s.*, sp.features, sp.max_users, sp.storage_gb 
-             FROM subscriptions s
-             LEFT JOIN subscription_plans sp ON s.plan_name = sp.plan_name
-             WHERE s.company_id = ? 
-             ORDER BY s.created_at DESC 
-             LIMIT 1",
-            [$companyId]
+    public function getSubscriptionStats($companyId = null) {
+        $cid = $companyId ?? $this->companyId;
+        if (!$cid) return false;
+
+        $sub = $this->db->fetchOne(
+            "SELECT * FROM subscriptions WHERE company_id = ? AND status IN ('active', 'trial') ORDER BY created_at DESC LIMIT 1", 
+            [$cid]
         );
-    }
-
-    // ... updateSubscriptionStatus and cancelSubscription remain ID based ...
-
-    /**
-     * Check if company has active trial
-     */
-    public function isTrialActive($companyId) {
-        $subscription = $this->getSubscription($companyId);
         
-        if (!$subscription) {
-            return false;
-        }
+        if (!$sub) return false;
 
-        if ($subscription['status'] !== 'trial') {
-            return false;
-        }
-
-        $now = time();
-        $trialEnds = strtotime($subscription['trial_ends_at']);
-
-        return $now < $trialEnds;
-    }
-
-    /**
-     * Check if company has used their trial (any previous subscription)
-     */
-    public function hasUsedTrial($companyId) {
-        $result = $this->db->fetchOne(
-            "SELECT COUNT(*) as count FROM subscriptions WHERE company_id = ?",
-            [$companyId]
-        );
-        return ($result['count'] ?? 0) > 0;
-    }
-
-    /**
-     * Check if company has active subscription
-     */
-    public function hasActiveSubscription($companyId) {
-        $subscription = $this->getSubscription($companyId);
+        $isTrial = $sub['status'] === 'trial';
+        $endDate = $isTrial ? $sub['trial_ends_at'] : $sub['current_period_end'];
         
-        if (!$subscription) {
-            return false;
+        $daysRemaining = 0;
+        if ($endDate) {
+            $now = new DateTime();
+            $end = new DateTime($endDate);
+            $daysRemaining = (int)$now->diff($end)->format('%r%a');
         }
 
-        // Trial is considered active
-        if ($this->isTrialActive($companyId)) {
-            return true;
-        }
-
-        if ($subscription['status'] === 'trial') {
-            $now = time();
-            $trialEnds = strtotime($subscription['trial_ends_at']);
-            return $now < $trialEnds;
-        }
-
-        // Check if subscription is active and not expired
-        if ($subscription['status'] === 'active') {
-            $now = time();
-            $periodEnds = strtotime($subscription['current_period_end']);
-            return $now < $periodEnds;
-        }
-
-        return false;
+        return [
+            'is_trial' => $isTrial,
+            'days_remaining' => max(0, $daysRemaining),
+            'plan_name' => $sub['plan_name'],
+            'status' => $sub['status']
+        ];
     }
 
     /**
-     * Get all subscription plans
+     * Load all features and limits for the company into memory
+     */
+    private function loadFeatures() {
+        if ($this->features !== null) {
+            return;
+        }
+
+        $rows = $this->db->fetchAll("SELECT * FROM v_company_plan_limits WHERE company_id = ?", [$this->companyId]);
+        $this->features = [];
+        foreach ($rows as $row) {
+            $this->features[$row['feature_code']] = [
+                'is_enabled' => (bool)$row['is_enabled'],
+                'limit_value' => $row['limit_value'] === null ? INF : (int)$row['limit_value'],
+                'feature_name' => $row['feature_name']
+            ];
+        }
+    }
+
+    /**
+     * Check if a feature is enabled
+     * @param string $featureCode
+     * @return bool
+     */
+    public function canAccess($featureCode) {
+        $this->loadFeatures();
+        return isset($this->features[$featureCode]) && $this->features[$featureCode]['is_enabled'];
+    }
+
+    /**
+     * Get the limit for a specific feature
+     * @param string $featureCode
+     * @return int|float (INF for unlimited)
+     */
+    public function getLimit($featureCode) {
+        $this->loadFeatures();
+        if (!isset($this->features[$featureCode])) {
+            return 0;
+        }
+        return $this->features[$featureCode]['limit_value'];
+    }
+
+    /**
+     * Check usage against limits
+     * @param string $featureCode
+     * @return array ['current' => int, 'limit' => int|INF, 'remaining' => int|INF, 'status' => string]
+     */
+    public function getUsageStatus($featureCode) {
+        $status = $this->db->fetchOne("SELECT * FROM v_company_usage_status WHERE company_id = ? AND feature_code = ?", [$this->companyId, $featureCode]);
+        
+        if (!$status) {
+            // If checking a non-measurable feature or one without usage yet
+            $limit = $this->getLimit($featureCode);
+            return [
+                'current' => 0,
+                'limit' => $limit,
+                'remaining' => $limit,
+                'status' => 'normal'
+            ];
+        }
+
+        $limit = $status['limit_value'] === null ? INF : (int)$status['limit_value'];
+        $current = (int)$status['current_usage'];
+        
+        return [
+            'current' => $current,
+            'limit' => $limit,
+            'remaining' => $limit === INF ? INF : max(0, $limit - $current),
+            'status' => $status['usage_status']
+        ];
+    }
+
+    /**
+     * Increment usage for a feature
+     * @param string $featureCode
+     * @param int $amount
+     */
+    public function incrementUsage($featureCode, $amount = 1) {
+        // Use the Stored Procedure for atomic increment
+        // Get subscription ID first
+        $sub = $this->db->fetchOne("SELECT id FROM subscriptions WHERE company_id = ? AND status IN ('active', 'trial')", [$this->companyId]);
+        
+        if ($sub) {
+            $this->db->query("CALL sp_increment_usage(?, ?, ?)", [$sub['id'], $featureCode, $amount]);
+        }
+    }
+
+    /**
+     * Get all plans with their features for display
      */
     public function getPlans() {
-        return $this->db->fetchAll(
-            "SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY display_order"
-        );
-    }
-
-    /**
-     * Upgrade/Downgrade subscription
-     */
-    public function changePlan($subscriptionId, $newPlanName, $billingCycle = null) {
-        $subscription = $this->db->fetchOne(
-            "SELECT * FROM subscriptions WHERE id = ?",
-            [$subscriptionId]
-        );
-
-        if (!$subscription) {
-            throw new Exception("Subscription not found");
-        }
-
-        $plan = $this->db->fetchOne(
-            "SELECT * FROM subscription_plans WHERE plan_name = ? AND is_active = 1",
-            [$newPlanName]
-        );
-
-        if (!$plan) {
-            throw new Exception("Invalid subscription plan");
-        }
-
-        $cycle = $billingCycle ?? $subscription['billing_cycle'];
-        $price = ($cycle === 'annual') ? $plan['annual_price'] : $plan['monthly_price'];
-
-        return $this->db->insert('subscriptions', [
-            'company_id' => $subscription['company_id'],
-            'user_id' => $subscription['user_id'],
-            'plan_name' => $newPlanName,
-            'plan_price' => $price,
-            'billing_cycle' => $cycle,
-            'status' => 'active', // Assuming immediate activation on change
-            'trial_ends_at' => null,
-            'current_period_start' => date('Y-m-d H:i:s'),
-            'current_period_end' => ($cycle === 'annual') 
-                ? date('Y-m-d H:i:s', strtotime('+1 year'))
-                : date('Y-m-d H:i:s', strtotime('+1 month')),
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
-    }
-
-    /**
-     * Activate subscription after payment
-     */
-    public function activateSubscription($subscriptionId, $razorpaySubscriptionId = null, $razorpayCustomerId = null) {
-        $updateData = [
-            'status' => 'active',
-            'updated_at' => date('Y-m-d H:i:s')
-        ];
-
-        if ($razorpaySubscriptionId) {
-            $updateData['razorpay_subscription_id'] = $razorpaySubscriptionId;
-        }
-
-        if ($razorpayCustomerId) {
-            $updateData['razorpay_customer_id'] = $razorpayCustomerId;
-        }
-
-        return $this->db->update('subscriptions',
-            $updateData,
-            'id = ?',
-            [$subscriptionId]
-        );
-    }
-
-    /**
-     * Get subscription statistics
-     */
-    public function getSubscriptionStats($companyId) {
-        $subscription = $this->getSubscription($companyId);
+        // 1. Fetch Plans
+        $plans = $this->db->fetchAll("SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY monthly_price ASC");
         
-        if (!$subscription) {
-            return null;
+        // 2. Fetch Features for each plan
+        foreach ($plans as &$plan) {
+            $features = $this->db->fetchAll("
+                SELECT f.feature_name, pf.limit_value
+                FROM plan_features pf
+                JOIN feature_definitions f ON pf.feature_code = f.feature_code
+                WHERE pf.plan_id = ? AND pf.is_enabled = 1
+                ORDER BY f.display_order ASC
+            ", [$plan['id']]);
+            
+            // Format features for display
+            $plan['features_list'] = [];
+            foreach ($features as $f) {
+                if ($f['limit_value'] !== null) {
+                     // For limits like Users: "5 Users" instead of "Maximum Users (5)" ideally, but using generic format for now
+                     // Let's formatting be smart: if name starts with "Maximum ", remove it?
+                     // e.g. "Maximum Users" -> "5 Users"
+                     $name = $f['feature_name'];
+                     if (strpos($name, 'Maximum ') === 0) {
+                         $cleanName = substr($name, 8);
+                         $plan['features_list'][] = $f['limit_value'] . ' ' . $cleanName;
+                     } else {
+                         $plan['features_list'][] = $name . ': ' . $f['limit_value'];
+                     }
+                } else {
+                    $plan['features_list'][] = $f['feature_name'];
+                }
+            }
         }
-
-        $stats = [
-            'plan_name' => $subscription['plan_name'],
-            'status' => $subscription['status'],
-            'billing_cycle' => $subscription['billing_cycle'],
-            'price' => $subscription['plan_price'],
-            'max_users' => $subscription['max_users'],
-            'storage_gb' => $subscription['storage_gb'],
-            'trial_ends_at' => $subscription['trial_ends_at'],
-            'current_period_end' => $subscription['current_period_end'],
-            'is_trial' => $this->isTrialActive($companyId),
-            'is_active' => $this->hasActiveSubscription($companyId)
-        ];
-
-        // Calculate days remaining
-        if ($stats['is_trial']) {
-            $now = time();
-            $trialEnds = strtotime($subscription['trial_ends_at']);
-            $stats['days_remaining'] = ceil(($trialEnds - $now) / 86400);
-        } else {
-            $now = time();
-            $periodEnds = strtotime($subscription['current_period_end']);
-            $stats['days_remaining'] = ceil(($periodEnds - $now) / 86400);
-        }
-
-        return $stats;
+        
+        return $plans;
     }
-
     /**
-     * Assign a manual subscription (Admin Override)
+     * Main method to assign a subscription manually (e.g. from Admin Panel)
+     * @param int $companyId
+     * @param string $planName
+     * @param string $startDate (Y-m-d H:i:s)
+     * @param string $endDate (Y-m-d H:i:s)
      */
     public function assignManualSubscription($companyId, $planName, $startDate, $endDate) {
-        $plan = $this->db->fetchOne(
-            "SELECT * FROM subscription_plans WHERE plan_name = ?",
-            [$planName]
-        );
-
-        if (!$plan) {
-            throw new Exception("Invalid subscription plan");
+        // 1. Find a User ID (Owner) for this company
+        // We need a user_id for the subscriptions table constraint
+        $owner = $this->db->fetchOne("SELECT id FROM users WHERE company_id = ? ORDER BY created_at ASC LIMIT 1", [$companyId]);
+        
+        if (!$owner) {
+            throw new Exception("Cannot assign subscription: Company has no users.");
         }
-
-        // Fetch company owner
-        $owner = $this->db->fetchOne(
-            "SELECT id FROM users WHERE company_id = ? ORDER BY created_at ASC LIMIT 1",
-            [$companyId]
-        );
-
-        // Cancel any existing active/trial subscriptions to ensure only one is active
-        $this->db->update('subscriptions', 
-            [
-                'status' => 'cancelled', 
-                'cancelled_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ], 
+        
+        $userId = $owner['id'];
+        
+        // 2. Get Plan Details
+        $plan = $this->db->fetchOne("SELECT monthly_price FROM subscription_plans WHERE plan_name = ?", [$planName]);
+        $price = $plan ? $plan['monthly_price'] : 0.00;
+        
+        // 3. Cancel any existing active subscriptions
+        $this->db->update(
+            "subscriptions", 
+            ['status' => 'cancelled', 'cancelled_at' => date('Y-m-d H:i:s')], 
             "company_id = ? AND status IN ('active', 'trial')", 
             [$companyId]
         );
-
-        // Always insert a new record to preserve history
-        return $this->db->insert('subscriptions', [
+        
+        // 4. Create new Subscription
+        $subscriptionData = [
+            'user_id' => $userId,
             'company_id' => $companyId,
-            'user_id' => $owner['id'] ?? null,
             'plan_name' => $planName,
-            'plan_price' => 0.00,
+            'plan_price' => $price, // Assuming monthly for manual
             'billing_cycle' => 'monthly',
             'status' => 'active',
             'current_period_start' => $startDate,
             'current_period_end' => $endDate,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+        
+        $this->db->insert("subscriptions", $subscriptionData);
+        
+        // 5. Reset internal cache if for same company
+        if ($this->companyId == $companyId) {
+            $this->features = null;
+        }
     }
 
     /**
-     * Cancel a subscription (Admin Override)
+     * Cancel a company's subscription immediately
+     * @param int $companyId
      */
     public function cancelSubscription($companyId) {
-        $existing = $this->db->fetchOne(
-            "SELECT id FROM subscriptions WHERE company_id = ? ORDER BY id DESC LIMIT 1",
+        $this->db->update(
+            "subscriptions", 
+            [
+                'status' => 'cancelled', 
+                'cancelled_at' => date('Y-m-d H:i:s'),
+                'current_period_end' => date('Y-m-d H:i:s') // End immediately
+            ], 
+            "company_id = ? AND status IN ('active', 'trial')", 
             [$companyId]
         );
-
-        if (!$existing) {
-            throw new Exception("No subscription found for this company");
+        
+        if ($this->companyId == $companyId) {
+            $this->features = null;
         }
+    }
 
-        return $this->db->update('subscriptions',
-            [
-                'status' => 'cancelled',
-                'current_period_end' => date('Y-m-d H:i:s'), // Immediate cancellation
-                'updated_at' => date('Y-m-d H:i:s')
-            ],
-            'id = ?',
-            [$existing['id']]
+    // ==========================================
+    // OFFLINE SUBSCRIPTION REQUESTS
+    // ==========================================
+
+    public function requestSubscription($companyId, $userId, $planName, $billingCycle) {
+        // Check for existing pending request
+        $existing = $this->db->fetchOne(
+            "SELECT id FROM subscription_requests WHERE company_id = ? AND status = 'pending'", 
+            [$companyId]
         );
+        
+        if ($existing) {
+            // Update existing request
+            $this->db->update('subscription_requests', [
+                'plan_name' => $planName,
+                'billing_cycle' => $billingCycle,
+                'request_date' => date('Y-m-d H:i:s')
+            ], 'id = ?', [$existing['id']]);
+        } else {
+            // Create new request
+            $this->db->insert('subscription_requests', [
+                'company_id' => $companyId,
+                'user_id' => $userId,
+                'plan_name' => $planName,
+                'billing_cycle' => $billingCycle,
+                'status' => 'pending'
+            ]);
+        }
+    }
+
+    public function getPendingRequests() {
+        return $this->db->fetchAll("
+            SELECT sr.*, c.company_name, u.full_name as user_name, u.email as user_email
+            FROM subscription_requests sr
+            JOIN company_settings c ON sr.company_id = c.id
+            JOIN users u ON sr.user_id = u.id
+            WHERE sr.status = 'pending'
+            ORDER BY sr.request_date DESC
+        ");
+    }
+
+    public function approveRequest($requestId, $adminId, $startDate, $endDate) {
+        $request = $this->db->fetchOne("SELECT * FROM subscription_requests WHERE id = ?", [$requestId]);
+        if (!$request) return false;
+
+        // Use the existing manual assignment logic
+        $this->assignManualSubscription($request['company_id'], $request['plan_name'], $startDate, $endDate);
+
+        // Mark request as approved
+        $this->db->update('subscription_requests', [
+            'status' => 'approved',
+            'processed_by' => $adminId,
+            'processed_at' => date('Y-m-d H:i:s')
+        ], 'id = ?', [$requestId]);
+        
+        return true;
+    }
+
+    public function rejectRequest($requestId, $adminId) {
+        $this->db->update('subscription_requests', [
+            'status' => 'rejected',
+            'processed_by' => $adminId,
+            'processed_at' => date('Y-m-d H:i:s')
+        ], 'id = ?', [$requestId]);
     }
 }
-

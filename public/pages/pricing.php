@@ -41,6 +41,8 @@ try {
             margin: 0 auto;
             line-height: 1.6;
         }
+        /* Fallback for modal visibility if Bootstrap fails */
+        .modal { display: none; } 
     </style>
 </head>
 <body>
@@ -68,7 +70,7 @@ try {
                     <?php foreach ($plans as $plan): ?>
                         <?php 
                             $isPopular = $plan['plan_name'] === 'Professional';
-                            $features = json_decode($plan['features'], true) ?? [];
+                            $features = $plan['features_list'] ?? [];
                             $monthlyPrice = number_format($plan['monthly_price'], 0);
                             $annualPrice = number_format($plan['annual_price'] / 12, 0); 
                             $actionText = $plan['plan_name'] === 'Enterprise' ? 'Contact Sales' : 'Start Free Trial';
@@ -100,14 +102,26 @@ try {
                                 <span class="period">/mo</span>
                             </div>
                             
-                            <ul class="features-list">
-                                <?php foreach ($features as $feature): ?>
-                                    <li><i class="fas fa-check"></i> <?php echo htmlspecialchars($feature); ?></li>
-                                <?php endforeach; ?>
-                            </ul>
+                            <?php 
+                                $featureCount = count($features);
+                                $needsCollapse = $featureCount > 6;
+                            ?>
+                            <div class="features-wrapper <?php echo $needsCollapse ? 'collapsed' : ''; ?>">
+                                <ul class="features-list">
+                                    <?php foreach ($features as $feature): ?>
+                                        <li><i class="fas fa-check"></i> <?php echo htmlspecialchars($feature); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+
+                            <?php if ($needsCollapse): ?>
+                                <button class="show-more-btn" onclick="toggleFeatures(this)">
+                                    Show More <i class="fas fa-chevron-down"></i>
+                                </button>
+                            <?php endif; ?>
                             
-                            <a href="../../modules/auth/register.php" class="btn-plan <?php echo !$isPopular ? 'btn-outline' : ''; ?>">
-                                <?php echo $actionText; ?>
+                            <a href="#" onclick="goToRequest('<?php echo htmlspecialchars($plan['plan_name']); ?>'); return false;" class="btn-plan <?php echo !$isPopular ? 'btn-outline' : ''; ?>">
+                                Request Plan
                             </a>
                         </div>
                     <?php endforeach; ?>
@@ -116,7 +130,15 @@ try {
         </div>
     </section>
 
+    <!-- Modal Removed -->
+
     <?php require_once '../../includes/public_footer.php'; ?>
     <script src="../../public/assets/js/landing.js"></script>
+    <script>
+        function goToRequest(planName) {
+            const cycle = document.getElementById('monthlyLabel').classList.contains('active') ? 'monthly' : 'annual';
+            window.location.href = `request_plan.php?plan=${encodeURIComponent(planName)}&cycle=${cycle}`;
+        }
+    </script>
 </body>
 </html>

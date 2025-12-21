@@ -50,6 +50,29 @@ return [
     // Reports
     '#^modules/reports/.*\.php#' => ['reports', 'view'],
     
+    // CRM
+    '#^modules/crm/customers/create\.php#' => ['crm', 'create'],
+    '#^modules/crm/customers/edit\.php#' => ['crm', 'edit'],
+    '#^modules/crm/customers/delete\.php#' => ['crm', 'delete'],
+    '#^modules/crm/customers/.*\.php#' => ['crm', 'view'],
+    
+    '#^modules/crm/leads/create\.php#' => ['crm', 'create'],
+    '#^modules/crm/leads/edit\.php#' => ['crm', 'edit'],
+    '#^modules/crm/leads/.*\.php#' => ['crm', 'view'],
+
+    '#^modules/crm/suppliers/create\.php#' => ['purchases', 'create'], // Suppliers often linked to purchases
+    '#^modules/crm/suppliers/edit\.php#' => ['purchases', 'edit'],
+    '#^modules/crm/suppliers/.*\.php#' => ['purchases', 'view'],
+
+    // Purchases
+    '#^modules/purchases/orders/create\.php#' => ['purchases', 'create'],
+    '#^modules/purchases/orders/edit\.php#' => ['purchases', 'edit'],
+    '#^modules/purchases/orders/.*\.php#' => ['purchases', 'view'],
+    
+    '#^modules/purchases/invoices/create\.php#' => ['purchases', 'create'],
+    '#^modules/purchases/invoices/edit\.php#' => ['purchases', 'edit'],
+    '#^modules/purchases/invoices/.*\.php#' => ['purchases', 'view'],
+    
     // Settings
     '#^modules/settings/company\.php#' => ['settings', 'edit'],
     '#^modules/settings/permissions\.php#' => ['settings', 'edit'],
