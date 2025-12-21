@@ -780,7 +780,7 @@ body {
     padding: 40px;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    overflow: hidden;
+    /* overflow: hidden; Removed to allow badge to show */
 }
 
 .price-card:hover {
@@ -1267,4 +1267,177 @@ body {
 .legal-contact h2 {
     border-bottom: none;
     margin-bottom: 16px;
+}
+
+/* ===========================
+   Responsive Design
+   =========================== */
+
+/* Mobile Menu Toggle (Default Hidden) */
+.mobile-menu-toggle {
+    display: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+@media (max-width: 968px) {
+
+    /* Navbar */
+    .mobile-menu-toggle {
+        display: block;
+    }
+
+    .nav-menu {
+        position: fixed;
+        top: 80px;
+        left: 0;
+        right: 0;
+        background: white;
+        display: none;
+        /* Hidden by default on mobile */
+        flex-direction: column;
+        padding: 24px;
+        gap: 20px;
+        border-bottom: 1px solid var(--border-color);
+        z-index: 9999;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-menu.active {
+        display: flex;
+        /* Shown when active */
+    }
+
+    .nav-menu li {
+        width: 100%;
+        text-align: center;
+    }
+
+    .nav-menu a {
+        display: block;
+        padding: 10px;
+        font-size: 1.1rem;
+    }
+
+    .btn-login {
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    /* Hero Section */
+    .hero {
+        padding: 120px 0 80px;
+    }
+
+    .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        text-align: center;
+    }
+
+    .hero-content {
+        order: 1;
+        /* Content first */
+    }
+
+    .hero-image {
+        order: 2;
+        margin-top: 20px;
+        transform: none !important;
+        /* Disable complex 3D on mobile */
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .hero-title {
+        font-size: 2.8rem;
+    }
+
+    .hero-subtitle {
+        margin: 0 auto 30px;
+        font-size: 1.1rem;
+    }
+
+    .hero-buttons {
+        justify-content: center;
+        flex-direction: column;
+        max-width: 300px;
+        margin: 0 auto 40px;
+    }
+
+    .hero-stats {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 30px;
+        border-top-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .stat {
+        min-width: 120px;
+    }
+
+    /* Trusted By */
+    .logos-grid {
+        flex-wrap: wrap;
+        gap: 30px;
+    }
+
+    .logo-item {
+        flex: 1 1 150px;
+        justify-content: center;
+    }
+
+    /* Features (Already partially handled, refining) */
+    .feature-row {
+        gap: 60px;
+    }
+
+    .feature-row,
+    .feature-row:nth-child(even) {
+        text-align: center;
+    }
+
+    .feature-content {
+        order: 1;
+    }
+
+    .feature-visual {
+        order: 2;
+    }
+
+    .feature-icon-wrapper {
+        margin: 0 auto 24px;
+    }
+
+    /* Pricing */
+    .pricing-cards {
+        grid-template-columns: 1fr;
+        max-width: 500px;
+    }
+
+    /* CTA */
+    .cta-content h2 {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 2.2rem;
+    }
+
+    .container {
+        padding: 0 20px;
+    }
+
+    .nav-brand {
+        font-size: 1.2rem;
+    }
+
+    .logo-item {
+        flex: 1 1 120px;
+        font-size: 1rem;
+    }
 }

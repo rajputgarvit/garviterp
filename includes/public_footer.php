@@ -59,3 +59,4 @@
 <script>
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 </script>
+<script src="<?php echo BASE_URL; ?>public/assets/js/landing.js?v=<?php echo time(); ?>"></script>
