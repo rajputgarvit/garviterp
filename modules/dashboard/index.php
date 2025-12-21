@@ -35,30 +35,80 @@ if ($auth->hasRole('Super Admin')) {
     }
 }
 
-// Get dashboard statistics
+// -------------------------
+// Dashboard Analytics & KPI
+// -------------------------
+
+// 1. Key Financial Metrics
 $stats = [
-    'total_employees' => $db->fetchOne("SELECT COUNT(*) as count FROM employees WHERE status = 'Active' AND company_id = ?", [$companyId])['count'] ?? 0,
-    'total_products' => $db->fetchOne("SELECT COUNT(*) as count FROM products WHERE is_active = 1 AND company_id = ?", [$companyId])['count'] ?? 0,
-    'total_customers' => $db->fetchOne("SELECT COUNT(*) as count FROM customers WHERE is_active = 1 AND company_id = ?", [$companyId])['count'] ?? 0,
-    'total_suppliers' => $db->fetchOne("SELECT COUNT(*) as count FROM suppliers WHERE is_active = 1 AND company_id = ?", [$companyId])['count'] ?? 0,
-    'pending_orders' => $db->fetchOne("SELECT COUNT(*) as count FROM sales_orders WHERE status IN ('Draft', 'Confirmed') AND company_id = ?", [$companyId])['count'] ?? 0,
-    'pending_invoices' => $db->fetchOne("SELECT COUNT(*) as count FROM invoices WHERE status IN ('Draft', 'Sent') AND company_id = ?", [$companyId])['count'] ?? 0,
-    'low_stock_items' => $db->fetchOne("SELECT COUNT(DISTINCT p.id) as count FROM products p JOIN stock_balance sb ON p.id = sb.product_id WHERE sb.available_quantity <= p.reorder_level AND p.company_id = ?", [$companyId])['count'] ?? 0,
-    'pending_leaves' => $db->fetchOne("SELECT COUNT(*) as count FROM leave_applications WHERE status = 'Pending' AND company_id = ?", [$companyId])['count'] ?? 0
+    // Revenue (Sum of Paid Invoices in current year)
+    'total_revenue' => $db->fetchOne("
+        SELECT SUM(total_amount) as total 
+        FROM invoices 
+        WHERE status = 'Paid' 
+        AND YEAR(invoice_date) = YEAR(CURDATE()) 
+        AND company_id = ?", [$companyId])['total'] ?? 0,
+
+    // Receivables (Pending Invoices)
+    'pending_invoices_amount' => $db->fetchOne("
+        SELECT SUM(balance_amount) as total 
+        FROM invoices 
+        WHERE status NOT IN ('Paid', 'Cancelled', 'Draft') 
+        AND company_id = ?", [$companyId])['total'] ?? 0,
+
+    // Payables (Pending Bills)
+    'pending_bills_amount' => $db->fetchOne("
+        SELECT SUM(balance_amount) as total 
+        FROM purchase_invoices 
+        WHERE status NOT IN ('Paid', 'Cancelled', 'Draft') 
+        AND company_id = ?", [$companyId])['total'] ?? 0,
+
+    // Cash Position
+    'cash_balance' => $db->fetchOne("
+        SELECT SUM(current_balance) as total 
+        FROM bank_accounts 
+        WHERE is_active = 1 
+        AND company_id = ?", [$companyId])['total'] ?? 0
 ];
 
-// Recent activities
-$recent_orders = $db->fetchAll("SELECT so.order_number, c.company_name, so.order_date, so.total_amount, so.status 
-                                FROM sales_orders so 
-                                JOIN customers c ON so.customer_id = c.id 
-                                WHERE so.company_id = ?
-                                ORDER BY so.created_at DESC LIMIT 5", [$companyId]);
+// 2. Sales Trend (Last 6 Months)
+$salesTrend = ['labels' => [], 'data' => []];
+for ($i = 5; $i >= 0; $i--) {
+    $monthStart = date('Y-m-01', strtotime("-$i months"));
+    $monthEnd = date('Y-m-t', strtotime("-$i months"));
+    $monthLabel = date('M', strtotime("-$i months"));
+    
+    $monthlyRevenue = $db->fetchOne("
+        SELECT SUM(total_amount) as total 
+        FROM invoices 
+        WHERE status != 'Cancelled' 
+        AND invoice_date BETWEEN ? AND ? 
+        AND company_id = ?", 
+        [$monthStart, $monthEnd, $companyId]
+    )['total'] ?? 0;
 
-$recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.invoice_date, i.total_amount, i.status 
-                                  FROM invoices i 
-                                  JOIN customers c ON i.customer_id = c.id 
-                                  WHERE i.company_id = ?
-                                  ORDER BY i.created_at DESC LIMIT 5", [$companyId]);
+    $salesTrend['labels'][] = $monthLabel;
+    $salesTrend['data'][] = $monthlyRevenue;
+}
+
+// 3. Invoice Status Distribution
+$invoiceCounts = $db->fetchOne("
+    SELECT 
+        SUM(CASE WHEN status = 'Paid' THEN 1 ELSE 0 END) as paid,
+        SUM(CASE WHEN status IN ('Sent', 'Partially Paid') THEN 1 ELSE 0 END) as sent,
+        SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue,
+        SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) as draft
+    FROM invoices 
+    WHERE company_id = ?", [$companyId]);
+
+// 4. Recent Invoices
+$recent_invoices = $db->fetchAll("
+    SELECT i.id, i.invoice_number, c.company_name, c.contact_person, i.invoice_date, i.total_amount, i.status 
+    FROM invoices i 
+    JOIN customers c ON i.customer_id = c.id 
+    WHERE i.company_id = ? 
+    ORDER BY i.created_at DESC 
+    LIMIT 10", [$companyId]);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -72,220 +122,257 @@ $recent_invoices = $db->fetchAll("SELECT i.invoice_number, c.company_name, i.inv
 </head>
 <body>
     <div class="dashboard-wrapper">
-        <!-- Sidebar -->
-        <!-- Sidebar -->
-        <!-- Sidebar -->
-        <?php include INCLUDES_PATH . '/sidebar.php'; ?>
+        <aside class="sidebar">
+            <?php include INCLUDES_PATH . '/sidebar.php'; ?>
+        </aside>
         
-        <!-- Main Content -->
         <main class="main-content">
             <?php include INCLUDES_PATH . '/header.php'; ?>
             
             <div class="content-area">
-                <!-- Statistics Cards -->
-                <div class="stats-grid">
+                <!-- Financial Highlights -->
+                <div class="stats-grid mb-4">
+                    <!-- Total Revenue -->
                     <div class="stat-card">
                         <div class="stat-card-header">
                             <div>
-                                <div class="stat-value"><?php echo number_format($stats['total_employees']); ?></div>
-                                <div class="stat-label">Active Employees</div>
+                                <div class="stat-value">₹<?php echo number_format($stats['total_revenue'] ?? 0, 2); ?></div>
+                                <div class="stat-label">Total Revenue (This Year)</div>
                             </div>
-                            <div class="stat-icon blue">
-                                <i class="fas fa-users"></i>
+                            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- To Collect -->
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-value">₹<?php echo number_format($stats['pending_invoices_amount'] ?? 0, 2); ?></div>
+                                <div class="stat-label">To Collect (Receivables)</div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- To Pay -->
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-value">₹<?php echo number_format($stats['pending_bills_amount'] ?? 0, 2); ?></div>
+                                <div class="stat-label">To Pay (Payables)</div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cash Balance -->
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div>
+                                <div class="stat-value">₹<?php echo number_format($stats['cash_balance'] ?? 0, 2); ?></div>
+                                <div class="stat-label">Cash & Bank Balance</div>
+                            </div>
+                            <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                                <i class="fas fa-landmark"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="row g-4 mb-4">
+                    <!-- Sales Trend -->
+                    <div class="col-lg-8">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h3 class="card-title mb-0">Sales & Revenue Trend</h3>
+                                <small class="text-muted">Last 6 Months</small>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 300px; position: relative;">
+                                    <canvas id="salesTrendChart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['total_products']); ?></div>
-                                <div class="stat-label">Products</div>
+                    <!-- Invoice Status -->
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h3 class="card-title mb-0">Invoice Status</h3>
                             </div>
-                            <div class="stat-icon green">
-                                <i class="fas fa-box"></i>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['total_customers']); ?></div>
-                                <div class="stat-label">Customers</div>
-                            </div>
-                            <div class="stat-icon blue">
-                                <i class="fas fa-user-tie"></i>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['pending_orders']); ?></div>
-                                <div class="stat-label">Pending Orders</div>
-                            </div>
-                            <div class="stat-icon orange">
-                                <i class="fas fa-shopping-cart"></i>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['pending_invoices']); ?></div>
-                                <div class="stat-label">Pending Invoices</div>
-                            </div>
-                            <div class="stat-icon red">
-                                <i class="fas fa-receipt"></i>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['low_stock_items']); ?></div>
-                                <div class="stat-label">Low Stock Items</div>
-                            </div>
-                            <div class="stat-icon orange">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['pending_leaves']); ?></div>
-                                <div class="stat-label">Pending Leaves</div>
-                            </div>
-                            <div class="stat-icon blue">
-                                <i class="fas fa-calendar-times"></i>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-card-header">
-                            <div>
-                                <div class="stat-value"><?php echo number_format($stats['total_suppliers']); ?></div>
-                                <div class="stat-label">Suppliers</div>
-                            </div>
-                            <div class="stat-icon green">
-                                <i class="fas fa-truck"></i>
+                            <div class="card-body d-flex justify-content-center align-items-center">
+                                <div style="width: 100%; max-width: 280px; height: 300px; position: relative;">
+                                    <canvas id="invoiceStatusChart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Recent Orders -->
+                <!-- Recent Invoices (Full Width) -->
                 <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Recent Sales Orders</h3>
-                        <a href="../sales/orders/index.php" class="btn btn-primary btn-sm">View All</a>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Recent Invoices</h3>
+                        <a href="<?php echo MODULES_URL; ?>/sales/invoices/index.php" class="btn btn-primary btn-sm">View All</a>
                     </div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Order Number</th>
-                                    <th>Customer</th>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($recent_orders)): ?>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
                                     <tr>
-                                        <td colspan="5" style="text-align: center; color: var(--text-secondary);">
-                                            No orders found. Create your first sales order to get started.
-                                        </td>
+                                        <th class="ps-4">Invoice Number</th>
+                                        <th>Customer</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($recent_orders as $order): ?>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($recent_invoices)): ?>
                                         <tr>
-                                            <td><strong><?php echo htmlspecialchars($order['order_number']); ?></strong></td>
-                                            <td><?php echo htmlspecialchars($order['company_name']); ?></td>
-                                            <td><?php echo date('d M Y', strtotime($order['order_date'])); ?></td>
-                                            <td>₹<?php echo number_format($order['total_amount'], 2); ?></td>
-                                            <td>
-                                                <?php
-                                                $statusClass = match($order['status']) {
-                                                    'Completed' => 'badge-success',
-                                                    'Confirmed', 'In Progress' => 'badge-primary',
-                                                    'Cancelled' => 'badge-danger',
-                                                    default => 'badge-warning'
-                                                };
-                                                ?>
-                                                <span class="badge <?php echo $statusClass; ?>">
-                                                    <?php echo htmlspecialchars($order['status']); ?>
-                                                </span>
+                                            <td colspan="5" class="text-center py-4 text-muted">
+                                                No invoices found. Create your first invoice to get started.
                                             </td>
                                         </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- Recent Invoices -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Recent Invoices</h3>
-                        <a href="invoices.php" class="btn btn-primary btn-sm">View All</a>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Invoice Number</th>
-                                    <th>Customer</th>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($recent_invoices)): ?>
-                                    <tr>
-                                        <td colspan="5" style="text-align: center; color: var(--text-secondary);">
-                                            No invoices found. Create your first invoice to get started.
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($recent_invoices as $invoice): ?>
-                                        <tr>
-                                            <td><strong><?php echo htmlspecialchars($invoice['invoice_number']); ?></strong></td>
-                                            <td><?php echo htmlspecialchars($invoice['company_name']); ?></td>
-                                            <td><?php echo date('d M Y', strtotime($invoice['invoice_date'])); ?></td>
-                                            <td>₹<?php echo number_format($invoice['total_amount'], 2); ?></td>
-                                            <td>
-                                                <?php
-                                                $statusClass = match($invoice['status']) {
-                                                    'Paid' => 'badge-success',
-                                                    'Sent', 'Partially Paid' => 'badge-primary',
-                                                    'Overdue' => 'badge-danger',
-                                                    default => 'badge-warning'
-                                                };
-                                                ?>
-                                                <span class="badge <?php echo $statusClass; ?>">
-                                                    <?php echo htmlspecialchars($invoice['status']); ?>
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                                    <?php else: ?>
+                                        <?php foreach ($recent_invoices as $invoice): ?>
+                                            <tr>
+                                                <td class="ps-4 fw-bold">
+                                                    <a href="<?php echo MODULES_URL; ?>/sales/invoices/view.php?id=<?php echo $invoice['id'] ?? '#'; ?>" class="text-decoration-none text-dark">
+                                                        <?php echo htmlspecialchars($invoice['invoice_number']); ?>
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-circle sm bg-soft-primary text-primary me-2">
+                                                            <?php 
+                                                            $displayName = !empty($invoice['company_name']) ? $invoice['company_name'] : $invoice['contact_person'];
+                                                            echo strtoupper(substr($displayName, 0, 1)); 
+                                                            ?>
+                                                        </div>
+                                                        <span class="fw-medium"><?php echo htmlspecialchars($displayName); ?></span>
+                                                    </div>
+                                                </td>
+                                                <td class="text-muted"><?php echo date('d M, Y', strtotime($invoice['invoice_date'])); ?></td>
+                                                <td class="fw-bold">₹<?php echo number_format($invoice['total_amount'], 2); ?></td>
+                                                <td>
+                                                    <?php
+                                                    $statusColors = [
+                                                        'Paid' => 'success',
+                                                        'Sent' => 'primary',
+                                                        'Partially Paid' => 'info',
+                                                        'Overdue' => 'danger',
+                                                        'Draft' => 'secondary'
+                                                    ];
+                                                    $bgClass = $statusColors[$invoice['status']] ?? 'warning';
+                                                    ?>
+                                                    <span class="badge bg-soft-<?php echo $bgClass; ?> text-<?php echo $bgClass; ?>">
+                                                        <?php echo htmlspecialchars($invoice['status']); ?>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
-</body>
-</html>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Data from PHP
+        const salesData = <?php echo json_encode($salesTrend); ?>;
+        const invoiceStats = <?php echo json_encode($invoiceCounts); ?>;
+
+        // Sales Trend Chart
+        const ctxSales = document.getElementById('salesTrendChart').getContext('2d');
+        new Chart(ctxSales, {
+            type: 'line',
+            data: {
+                labels: salesData.labels,
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: salesData.data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#3b82f6',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Revenue: ₹' + context.parsed.y.toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { borderDash: [2, 4], color: '#f3f4f6' },
+                        ticks: {
+                            callback: function(value) { return '₹' + value / 1000 + 'k'; }
+                        }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Invoice Status Chart
+        const ctxInvoice = document.getElementById('invoiceStatusChart').getContext('2d');
+        new Chart(ctxInvoice, {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Pending', 'Overdue'],
+                datasets: [{
+                    data: [
+                        invoiceStats.paid || 0,
+                        (invoiceStats.sent || 0) + (invoiceStats.partially_paid || 0) + (invoiceStats.draft || 0),
+                        invoiceStats.overdue || 0
+                    ],
+                    backgroundColor: ['#10b981', '#3b82f6', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: true, padding: 20 }
+                    }
+                }
+            }
+        });
+    </script>

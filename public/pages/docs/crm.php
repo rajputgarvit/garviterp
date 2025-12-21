@@ -6,7 +6,7 @@ require_once '../../../config/config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing & Payments - <?php echo APP_NAME; ?> Docs</title>
+    <title>CRM Guide - <?php echo APP_NAME; ?> Docs</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../../public/assets/css/landing.css">
@@ -40,7 +40,7 @@ require_once '../../../config/config.php';
             <div class="nav-group">
                 <div class="nav-header">Modules</div>
                 <a href="accounting.php" class="nav-link">Accounting</a>
-                <a href="crm.php" class="nav-link">CRM</a>
+                <a href="crm.php" class="nav-link active">CRM</a>
                 <a href="hr.php" class="nav-link">HR & Payroll</a>
                 <a href="inventory.php" class="nav-link">Inventory</a>
                 <a href="purchases.php" class="nav-link">Purchases</a>
@@ -50,7 +50,7 @@ require_once '../../../config/config.php';
             </div>
             <div class="nav-group">
                 <div class="nav-header">Administration</div>
-                <a href="billing.php" class="nav-link active">Billing & Utils</a>
+                <a href="billing.php" class="nav-link">Billing & Utils</a>
                 <a href="user-management.php" class="nav-link">Users & Roles</a>
             </div>
             <div class="nav-group">
@@ -63,22 +63,22 @@ require_once '../../../config/config.php';
             <div class="breadcrumb">
                 <a href="../documentation.php">Docs</a>
                 <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
-                <span>Billing & Payments</span>
+                <span>CRM</span>
             </div>
 
-            <h1 class="doc-title">Billing & Payments</h1>
+            <h1 class="doc-title">Customer Relationship Management</h1>
             
             <div class="doc-body">
-                <p>Manage your Acculynce subscription, update payment methods, and view your invoice history.</p>
+                <p>Build better relationships with your customers and track your sales pipeline efficiently.</p>
 
-                <h2>Managing your Subscription</h2>
-                <p>To upgrade or downgrade your plan, log in and navigate to <strong>Settings > Subscription</strong>. You'll see current plan details and options to change your tier.</p>
+                <h2>Leads</h2>
+                <p>Capture potential customers as Leads. You can track their source (e.g., Website, Referral) and status (e.g., New, Contacted, Qualified). Converting a qualified lead automatically creates a Customer account.</p>
 
-                <h2>Payment Methods</h2>
-                <p>We accept major credit cards (Visa, Mastercard, Amex). You can add or remove cards in the "Payment Methods" section. We use Stripe to securely process all payments.</p>
+                <h2>Customers</h2>
+                <p>Manage your database of paying clients. View their history, contact info, and current standing. All invoices, quotes, and support tickets are linked to the Customer profile.</p>
 
-                <h2>Viewing Invoices</h2>
-                <p>Need a receipt for your accounting? All past invoices for your subscription fees are available for download in PDF format under the "Billing History" tab.</p>
+                <h2>Sources & Statuses</h2>
+                <p>Customize your sales pipeline by defining your own Lead Sources and Statuses in settings. This helps you report on which channels are most effective.</p>
             </div>
         </main>
     </div>

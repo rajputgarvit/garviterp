@@ -38,11 +38,20 @@ require_once '../../../config/config.php';
                 <a href="getting-started.php" class="nav-link">Introduction</a>
             </div>
             <div class="nav-group">
-                <div class="nav-header">Guides</div>
-                <a href="billing.php" class="nav-link">Billing & Payments</a>
-                <a href="user-management.php" class="nav-link">User Management</a>
-                <a href="inventory.php" class="nav-link active">Inventory Guide</a>
-                <a href="invoicing.php" class="nav-link">Invoicing Tutorial</a>
+                <div class="nav-header">Modules</div>
+                <a href="accounting.php" class="nav-link">Accounting</a>
+                <a href="crm.php" class="nav-link">CRM</a>
+                <a href="hr.php" class="nav-link">HR & Payroll</a>
+                <a href="inventory.php" class="nav-link active">Inventory</a>
+                <a href="purchases.php" class="nav-link">Purchases</a>
+                <a href="reports.php" class="nav-link">Reports</a>
+                <a href="invoicing.php" class="nav-link">Sales & Invoicing</a>
+                <a href="support.php" class="nav-link">Support</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-header">Administration</div>
+                <a href="billing.php" class="nav-link">Billing & Utils</a>
+                <a href="user-management.php" class="nav-link">Users & Roles</a>
             </div>
             <div class="nav-group">
                 <div class="nav-header">Developers</div>

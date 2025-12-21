@@ -27,6 +27,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $success = ($newStatus == '1') ? "Maintenance mode enabled." : "Maintenance mode disabled.";
     }
+
+    // Update SMTP Settings
+    if (isset($_POST['update_smtp'])) {
+        $user = $auth->getCurrentUser();
+        $targetCompanyId = $user['company_id'];
+        
+        $smtpData = [
+            'smtp_host' => $_POST['smtp_host'] ?? null,
+            'smtp_port' => $_POST['smtp_port'] ?? 587,
+            'smtp_username' => $_POST['smtp_username'] ?? null,
+            'smtp_encryption' => $_POST['smtp_encryption'] ?? 'tls',
+            'email_from_name' => $_POST['email_from_name'] ?? null,
+            'email_from_address' => $_POST['email_from_address'] ?? null,
+        ];
+
+        // Only update password if provided
+        if (!empty($_POST['smtp_password'])) {
+            $smtpData['smtp_password'] = $_POST['smtp_password'];
+        }
+
+        if ($targetCompanyId) {
+            $db->update('company_settings', $smtpData, 'id = ?', [$targetCompanyId]);
+            $success = "SMTP settings updated successfully.";
+        }
+    }
 }
 
 // System Info
@@ -35,6 +60,10 @@ $dbVersion = $db->fetchOne("SELECT VERSION() as version")['version'];
 $serverSoftware = $_SERVER['SERVER_SOFTWARE'];
 $setting = $db->fetchOne("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'");
 $maintenanceMode = ($setting && $setting['setting_value'] == '1');
+
+// Fetch Company Settings for SMTP
+$user = $auth->getCurrentUser();
+$companySettings = $db->fetchOne("SELECT * FROM company_settings WHERE id = ?", [$user['company_id']]);
 
 // Disk Usage
 $diskTotal = disk_total_space("/");
@@ -130,6 +159,52 @@ function formatBytes($bytes, $precision = 2) {
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Email Configuration (SMTP)</div>
+    </div>
+    <div style="padding: 20px;">
+        <form method="POST">
+            <input type="hidden" name="update_smtp" value="1">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500;">SMTP Host</label>
+                    <input type="text" name="smtp_host" class="form-control" value="<?php echo htmlspecialchars($companySettings['smtp_host'] ?? ''); ?>" placeholder="smtp.gmail.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+                <div>
+                    <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500;">SMTP Port</label>
+                    <input type="text" name="smtp_port" class="form-control" value="<?php echo htmlspecialchars($companySettings['smtp_port'] ?? '587'); ?>" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500;">SMTP Username</label>
+                    <input type="text" name="smtp_username" class="form-control" value="<?php echo htmlspecialchars($companySettings['smtp_username'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+                <div>
+                    <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500;">SMTP Password</label>
+                    <input type="password" name="smtp_password" class="form-control" placeholder="Update only if changing" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+            </div>
+             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500;">From Name</label>
+                    <input type="text" name="email_from_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['email_from_name'] ?? ''); ?>" placeholder="Company Name" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+                <div>
+                    <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 500;">From Address</label>
+                    <input type="email" name="email_from_address" class="form-control" value="<?php echo htmlspecialchars($companySettings['email_from_address'] ?? ''); ?>" placeholder="noreply@company.com" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+            </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary" style="background-color: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-save"></i> Save SMTP Settings
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 

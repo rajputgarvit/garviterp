@@ -55,5 +55,5 @@ return [
     '#^modules/settings/permissions\.php#' => ['settings', 'edit'],
     '#^modules/settings/delete-data\.php#' => ['settings', 'delete'],
     '#^modules/settings/roles\.php#' => ['settings', 'view'], 
-    '#^modules/settings/.*\.php#' => ['settings', 'view'],
+    '#^modules/settings/(?!profile\.php).*\.php#' => ['settings', 'view'],
 ];

@@ -203,8 +203,44 @@ require_once '../../config/config.php';
 
                 <a href="docs/invoicing.php" class="doc-card">
                     <div class="doc-icon"><i class="fas fa-file-invoice"></i></div>
-                    <h3 class="doc-title">Invoicing Tutorial</h3>
+                    <h3 class="doc-title">Sales & Invoicing</h3>
                     <p class="doc-desc">Creating custom templates, automated reminders, and tax settings.</p>
+                </a>
+
+                <a href="docs/accounting.php" class="doc-card">
+                    <div class="doc-icon"><i class="fas fa-calculator"></i></div>
+                    <h3 class="doc-title">Accounting</h3>
+                    <p class="doc-desc">Chart of accounts, journal entries, and financial management.</p>
+                </a>
+
+                <a href="docs/crm.php" class="doc-card">
+                    <div class="doc-icon"><i class="fas fa-handshake"></i></div>
+                    <h3 class="doc-title">CRM</h3>
+                    <p class="doc-desc">Manage leads, customers, and your sales pipeline.</p>
+                </a>
+
+                <a href="docs/hr.php" class="doc-card">
+                    <div class="doc-icon"><i class="fas fa-user-tie"></i></div>
+                    <h3 class="doc-title">HR & Payroll</h3>
+                    <p class="doc-desc">Employee management, attendance tracking, and payroll processing.</p>
+                </a>
+
+                <a href="docs/purchases.php" class="doc-card">
+                    <div class="doc-icon"><i class="fas fa-shopping-cart"></i></div>
+                    <h3 class="doc-title">Purchases</h3>
+                    <p class="doc-desc">Vendor management, purchase orders, and bill payments.</p>
+                </a>
+
+                <a href="docs/reports.php" class="doc-card">
+                    <div class="doc-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3 class="doc-title">Reports</h3>
+                    <p class="doc-desc">Comprehensive analytics for insightful business decisions.</p>
+                </a>
+
+                <a href="docs/support.php" class="doc-card">
+                    <div class="doc-icon"><i class="fas fa-life-ring"></i></div>
+                    <h3 class="doc-title">Support Tools</h3>
+                    <p class="doc-desc">Ticket management and customer inquiry handling.</p>
                 </a>
             </div>
         </div>

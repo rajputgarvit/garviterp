@@ -6,7 +6,7 @@ require_once '../../../config/config.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing & Payments - <?php echo APP_NAME; ?> Docs</title>
+    <title>Accounting Guide - <?php echo APP_NAME; ?> Docs</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../../../public/assets/css/landing.css">
@@ -39,7 +39,7 @@ require_once '../../../config/config.php';
             </div>
             <div class="nav-group">
                 <div class="nav-header">Modules</div>
-                <a href="accounting.php" class="nav-link">Accounting</a>
+                <a href="accounting.php" class="nav-link active">Accounting</a>
                 <a href="crm.php" class="nav-link">CRM</a>
                 <a href="hr.php" class="nav-link">HR & Payroll</a>
                 <a href="inventory.php" class="nav-link">Inventory</a>
@@ -50,7 +50,7 @@ require_once '../../../config/config.php';
             </div>
             <div class="nav-group">
                 <div class="nav-header">Administration</div>
-                <a href="billing.php" class="nav-link active">Billing & Utils</a>
+                <a href="billing.php" class="nav-link">Billing & Utils</a>
                 <a href="user-management.php" class="nav-link">Users & Roles</a>
             </div>
             <div class="nav-group">
@@ -63,22 +63,25 @@ require_once '../../../config/config.php';
             <div class="breadcrumb">
                 <a href="../documentation.php">Docs</a>
                 <i class="fas fa-chevron-right" style="font-size: 0.8rem;"></i>
-                <span>Billing & Payments</span>
+                <span>Accounting</span>
             </div>
 
-            <h1 class="doc-title">Billing & Payments</h1>
+            <h1 class="doc-title">Accounting & Finance</h1>
             
             <div class="doc-body">
-                <p>Manage your Acculynce subscription, update payment methods, and view your invoice history.</p>
+                <p>Manage your company's financials with the robust Accounting module, including Chart of Accounts, Journal Entries, and Balance Sheets.</p>
 
-                <h2>Managing your Subscription</h2>
-                <p>To upgrade or downgrade your plan, log in and navigate to <strong>Settings > Subscription</strong>. You'll see current plan details and options to change your tier.</p>
+                <h2>Chart of Accounts</h2>
+                <p>The foundation of your accounting. We provide a default set of accounts (Assets, Liabilities, Equity, Income, Expenses), but you can customize them to fit your business structure.</p>
 
-                <h2>Payment Methods</h2>
-                <p>We accept major credit cards (Visa, Mastercard, Amex). You can add or remove cards in the "Payment Methods" section. We use Stripe to securely process all payments.</p>
+                <h2>Journal Entries</h2>
+                <p>Record financial transactions manually for adjustments, opening balances, or complex transfers. Each entry supports multiple debits and credits and must balance before saving.</p>
 
-                <h2>Viewing Invoices</h2>
-                <p>Need a receipt for your accounting? All past invoices for your subscription fees are available for download in PDF format under the "Billing History" tab.</p>
+                <h2>Fiscal Years</h2>
+                <p>Define your financial years to segregate data for reporting. You can close fiscal years to prevent further edits to past transactions.</p>
+                
+                <h2>General Ledger</h2>
+                <p>View the complete history of transactions for any account. This is essential for audits and tracking the flow of money through your business.</p>
             </div>
         </main>
     </div>

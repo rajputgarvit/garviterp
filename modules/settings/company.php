@@ -27,28 +27,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $data = [
                 // Company Profile
                 'company_name' => $_POST['company_name'],
+                'industry_type' => $_POST['industry_type'] ?? null,
+                'business_type' => $_POST['business_type'] ?? null,
                 'company_registration_number' => $_POST['company_registration_number'] ?? null,
                 'address_line1' => $_POST['address_line1'],
-                'address_line2' => $_POST['address_line2'],
+                'address_line2' => $_POST['address_line2'] ?? null,
                 'city' => $_POST['city'],
                 'state' => $_POST['state'],
-                'country' => $_POST['country'],
-                'postal_code' => $_POST['postal_code'],
-                'phone' => $_POST['phone'],
-                'email' => $_POST['email'],
-                'website' => $_POST['website'],
+                'country' => $_POST['country'] ?? 'India',
+                'postal_code' => $_POST['postal_code'] ?? null,
+                'phone' => $_POST['phone'] ?? null,
+                'email' => $_POST['email'] ?? null,
+                'website' => $_POST['website'] ?? null,
                 
                 // Tax Information
-                'gstin' => $_POST['gstin'],
-                'pan' => $_POST['pan'],
-                'tax_registration_date' => $_POST['tax_registration_date'] ?: null,
+                'gstin' => $_POST['gstin'] ?? null,
+                'pan' => $_POST['pan'] ?? null,
+                'tax_registration_date' => !empty($_POST['tax_registration_date']) ? $_POST['tax_registration_date'] : null,
                 
                 // Bank Details
-                'bank_name' => $_POST['bank_name'],
-                'bank_account_number' => $_POST['bank_account_number'],
-                'bank_ifsc' => $_POST['bank_ifsc'],
-                'bank_branch' => $_POST['bank_branch'],
-                'bank_account_holder' => $_POST['bank_account_holder'],
+                'bank_name' => $_POST['bank_name'] ?? null,
+                'bank_account_number' => $_POST['bank_account_number'] ?? null,
+                'bank_ifsc' => $_POST['bank_ifsc'] ?? null,
+                'bank_branch' => $_POST['bank_branch'] ?? null,
+                'bank_account_holder' => $_POST['bank_account_holder'] ?? null,
                 
                 // Business Settings
                 'financial_year_start' => $_POST['financial_year_start'],
@@ -71,20 +73,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'twitter_url' => $_POST['twitter_url'] ?? null,
                 'instagram_url' => $_POST['instagram_url'] ?? null,
                 
-                // Email Settings
-                'smtp_host' => $_POST['smtp_host'] ?? null,
-                'smtp_port' => $_POST['smtp_port'] ?? 587,
-                'smtp_username' => $_POST['smtp_username'] ?? null,
-                'smtp_password' => $_POST['smtp_password'] ? $_POST['smtp_password'] : null,
-                'smtp_encryption' => $_POST['smtp_encryption'] ?? 'tls',
-                'email_from_name' => $_POST['email_from_name'] ?? null,
-                'email_from_address' => $_POST['email_from_address'] ?? null,
                 'enable_email_notifications' => isset($_POST['enable_email_notifications']) ? 1 : 0,
                 
                 // System Preferences
                 'low_stock_threshold' => $_POST['low_stock_threshold'],
                 'enable_multi_currency' => isset($_POST['enable_multi_currency']) ? 1 : 0,
                 'enable_barcode' => isset($_POST['enable_barcode']) ? 1 : 0,
+                'is_gst_registered' => isset($_POST['is_gst_registered']) ? 1 : 0,
+                'enable_einvoicing' => isset($_POST['enable_einvoicing']) ? 1 : 0,
                 
                 // Branding
                 'app_name' => $_POST['app_name'] ?? null,
@@ -106,83 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $uploadPath = $uploadDir . $fileName;
                     
                     if (move_uploaded_file($_FILES['company_logo']['tmp_name'], $uploadPath)) {
-                        
-                        // Process Logo if requested
-                        if (isset($_POST['process_logo']) && $_POST['process_logo'] == '1') {
-                            $processed = false;
-                            
-                            // Handle PNG/JPG/WEBP
-                            if (in_array($fileExtension, ['jpg', 'jpeg', 'png', 'webp'])) {
-                                $info = getimagesize($uploadPath);
-                                $mime = $info['mime'];
-                                $srcImg = null;
-                                
-                                if ($mime == 'image/jpeg') $srcImg = imagecreatefromjpeg($uploadPath);
-                                elseif ($mime == 'image/png') $srcImg = imagecreatefrompng($uploadPath);
-                                elseif ($mime == 'image/webp') $srcImg = imagecreatefromwebp($uploadPath);
-                                
-                                if ($srcImg) {
-                                    $width = imagesx($srcImg);
-                                    $height = imagesy($srcImg);
-                                    $newImg = imagecreatetruecolor($width, $height);
-                                    
-                                    imagealphablending($newImg, false);
-                                    imagesavealpha($newImg, true);
-                                    $transparent = imagecolorallocatealpha($newImg, 0, 0, 0, 127);
-                                    $white = imagecolorallocate($newImg, 255, 255, 255);
-                                    
-                                    imagefilledrectangle($newImg, 0, 0, $width, $height, $transparent);
-                                    
-                                    for ($x = 0; $x < $width; $x++) {
-                                        for ($y = 0; $y < $height; $y++) {
-                                            $rgb = imagecolorat($srcImg, $x, $y);
-                                            $r = ($rgb >> 16) & 0xFF;
-                                            $g = ($rgb >> 8) & 0xFF;
-                                            $b = ($rgb) & 0xFF;
-                                            $a = ($rgb >> 24) & 0x7F;
-                                            
-                                            // If pixel is white-ish, make transparent
-                                            if ($r > 240 && $g > 240 && $b > 240) {
-                                                imagesetpixel($newImg, $x, $y, $transparent);
-                                            } else {
-                                                // If not white, make it pure white
-                                                // Preserve original alpha if it was already transparent
-                                                if ($a == 127) {
-                                                    imagesetpixel($newImg, $x, $y, $transparent);
-                                                } else {
-                                                    imagesetpixel($newImg, $x, $y, $white);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Save as PNG
-                                    $newFileName = 'logo_' . $user['company_id'] . '_' . time() . '_white.png';
-                                    $newUploadPath = $uploadDir . $newFileName;
-                                    imagepng($newImg, $newUploadPath);
-                                    
-                                    imagedestroy($srcImg);
-                                    imagedestroy($newImg);
-                                    
-                                    // Remove original and update paths
-                                    unlink($uploadPath);
-                                    $fileName = $newFileName;
-                                    $uploadPath = $newUploadPath;
-                                }
-                            } 
-                            // Handle SVG
-                            elseif ($fileExtension == 'svg') {
-                                $svgContent = file_get_contents($uploadPath);
-                                // Replace fills and strokes with white
-                                $svgContent = preg_replace('/fill="#[0-9a-fA-F]{3,6}"/', 'fill="#FFFFFF"', $svgContent);
-                                $svgContent = preg_replace('/stroke="#[0-9a-fA-F]{3,6}"/', 'stroke="#FFFFFF"', $svgContent);
-                                // Also handle rgb()
-                                $svgContent = preg_replace('/fill="rgb\([^)]+\)"/', 'fill="#FFFFFF"', $svgContent);
-                                file_put_contents($uploadPath, $svgContent);
-                            }
-                        }
-
-                        $data['logo_path'] = 'public/uploads/logos/' . $fileName;
+                         $data['logo_path'] = 'public/uploads/logos/' . $fileName;
                     }
                 }
             }
@@ -197,15 +117,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $db->insert('company_settings', $data);
             }
             
-            $success = "Company settings updated successfully! (ID: $targetCompanyId, App: " . htmlspecialchars($_POST['app_name'] ?? 'N/A') . ")";
+            $success = "Company settings updated successfully!";
+             // Refresh data
+             $companySettings = $db->fetchOne("SELECT * FROM company_settings WHERE id = ? LIMIT 1", [$user['company_id']]);
+
         }
     } catch (Exception $e) {
         $error = 'Error: ' . $e->getMessage();
     }
 }
 
-// Fetch company settings
-$companySettings = $db->fetchOne("SELECT * FROM company_settings WHERE id = ? LIMIT 1", [$user['company_id']]);
+// Fetch company settings if not already fetched
+if (!isset($companySettings)) {
+    $companySettings = $db->fetchOne("SELECT * FROM company_settings WHERE id = ? LIMIT 1", [$user['company_id']]);
+}
 
 // Set defaults if no settings exist
 if (!$companySettings) {
@@ -223,7 +148,9 @@ if (!$companySettings) {
         'smtp_encryption' => 'tls',
         'enable_email_notifications' => 1,
         'enable_barcode' => 1,
-        'enable_multi_currency' => 0
+        'enable_multi_currency' => 0,
+        'is_gst_registered' => 0,
+        'enable_einvoicing' => 0
     ];
 }
 ?>
@@ -236,118 +163,285 @@ if (!$companySettings) {
     <link rel="stylesheet" href="../../public/assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <script>
-        function switchSettingsTab(event, tabId) {
-            // Remove active class from all tabs and contents
-            document.querySelectorAll('.settings-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.settings-tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding content
-            // Handle case where event.currentTarget might be null if called programmatically
-            const button = event.currentTarget || document.querySelector(`button[onclick*="'${tabId}'"]`);
-            if (button) button.classList.add('active');
-            
-            document.getElementById(tabId).classList.add('active');
+    <style>
+        :root {
+            --primary-bg: #f3f4f6;
+            --border-color: #e5e7eb;
+            --input-border: #d1d5db;
         }
 
-        // Handle HTML5 validation for hidden tabs
-        document.querySelector('form').addEventListener('invalid', function(e) {
-            const target = e.target;
-            const tabContent = target.closest('.settings-tab-content');
-            
-            if (tabContent && !tabContent.classList.contains('active')) {
-                // Prevent default browser error bubble which might look weird or not show
-                // e.preventDefault(); 
-                
-                const tabId = tabContent.id;
-                const tabButton = document.querySelector(`button[onclick*="'${tabId}'"]`);
-                
-                // Switch to the tab
-                switchSettingsTab({currentTarget: tabButton}, tabId);
-                
-                // Focus the input after a short delay to allow tab switch
-                setTimeout(() => {
-                    target.focus();
-                }, 100);
-            }
-        }, true); // Use capture phase to catch 'invalid' event which doesn't bubble
-    </script>
-    <style>
-        .settings-tabs {
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Inter', sans-serif;
+            color: #1f2937;
+        }
+
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Top Action Bar */
+        .page-header-actions {
             display: flex;
-            gap: 5px;
-            border-bottom: 2px solid var(--border-color);
-            margin-bottom: 30px;
-            overflow-x: auto;
-            flex-wrap: wrap;
-        }
-        
-        .settings-tab {
-            padding: 12px 20px;
-            background: none;
-            border: none;
-            border-bottom: 3px solid transparent;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        }
-        
-        .settings-tab:hover {
-            color: var(--primary-color);
-            background: var(--light-bg);
-        }
-        
-        .settings-tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-            background: var(--light-bg);
-        }
-        
-        .settings-tab-content {
-            display: none;
-        }
-        
-        .settings-tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .settings-section {
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
             background: white;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+            color: #111827;
+        }
+
+        .header-title p {
+            margin: 4px 0 0;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn-action-primary {
+            background-color: #7c3aed; /* Purple brand color from reference */
+            color: white;
+            padding: 10px 24px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-action-primary:hover {
+            background-color: #6d28d9;
+        }
+
+        .btn-action-light {
+            background-color: white;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
         }
         
-        .settings-section h3 {
-            color: var(--primary-color);
+        .btn-action-light:hover {
+            background-color: #f9fafb;
+        }
+
+        /* Main Form Card */
+        .settings-card {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 32px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Form Styling (Reference UI) */
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 6px;
+        }
+
+        .form-label.required::after {
+            content: " *";
+            color: #ef4444;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #1f2937;
+            background-color: #fff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-control:focus {
+            border-color: #7c3aed;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        textarea.form-control {
+            height: auto;
+            min-height: 80px;
+        }
+
+        /* Fix Dropdown Text Clipping & Appearance */
+        select.form-control {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 16px 12px;
+            padding-right: 2.5rem; /* Space for arrow */
+            line-height: 1.5; /* Ensure text centering */
+        }
+
+        /* Logo Upload Section - Specific Grid */
+        .logo-section-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .logo-upload-container {
+            border: 2px dashed #93c5fd; /* Soft blue dashed border */
+            background-color: #eff6ff;
+            border-radius: 8px;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .logo-upload-container:hover {
+            border-color: #3b82f6;
+            background-color: #eedeff;
+        }
+
+        .logo-upload-container i {
+            font-size: 24px;
+            color: #3b82f6;
+            margin-bottom: 8px;
+        }
+
+        .logo-upload-container span {
+            font-size: 13px;
+            color: #2563eb;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .logo-upload-container small {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        
+        .logo-upload-container input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2; /* Ensure it's on top */
+        }
+
+        .logo-preview-img {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+        }
+
+        /* Two columns grid for general fields */
+        .grid-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .d-full-width {
+            width: 100%;
+            margin-bottom: 24px;
+        }
+        
+        .section-separator {
+            margin: 30px 0;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
             margin-bottom: 20px;
-            font-size: 18px;
+        }
+
+        /* Toggle Switches */
+        .toggle-wrapper {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        /* Custom Radio for GST */
+        .radio-group {
+            display: flex;
+            gap: 20px;
         }
         
-        .info-box {
-            background: #f0f9ff;
-            border-left: 4px solid #3b82f6;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
         }
         
-        .info-box i {
-            color: #3b82f6;
-            margin-right: 10px;
+        .radio-option input[type="radio"] {
+            accent-color: #7c3aed;
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo-section-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .grid-row-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .page-header-actions {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+            
+            .action-buttons {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
@@ -358,453 +452,351 @@ if (!$companySettings) {
         <main class="main-content">
             <?php include INCLUDES_PATH . '/header.php'; ?>
             
-            <div class="content-area">
-                <?php if ($success): ?>
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle"></i> <?php echo $success; ?>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if ($error): ?>
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
-                    </div>
-                <?php endif; ?>
-                
-                <div class="page-header">
-                    <h1><i class="fas fa-cog"></i> Company Settings</h1>
-                    <p>Configure your company profile, business rules, and system preferences</p>
-                </div>
-                
-                <form method="POST" enctype="multipart/form-data" action="company">
-                    <input type="hidden" name="action" value="update_company_settings">
-                    <input type="hidden" name="company_id" value="<?php echo $companySettings['id'] ?? ''; ?>">
-                    
-                    <div class="settings-tabs">
-                        <button type="button" class="settings-tab active" onclick="switchSettingsTab(event, 'profile')">
-                            <i class="fas fa-building"></i> Company Profile
-                        </button>
-                        <button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'business')">
-                            <i class="fas fa-briefcase"></i> Business Settings
-                        </button>
-                        <button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'branding')">
-                           <i class="fas fa-paint-brush"></i> Branding
-                        </button>
-                        <button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'tax')">
-                            <i class="fas fa-file-invoice-dollar"></i> Tax & Banking
-                        </button>
-                        <button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'invoice')">
-                            <i class="fas fa-receipt"></i> Invoice Settings
-                        </button>
-                        <!--<button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'email')">-->
-                        <!--    <i class="fas fa-envelope"></i> Email Configuration-->
-                        <!--</button>-->
-                        <!--<button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'social')">-->
-                        <!--    <i class="fas fa-share-alt"></i> Social Media-->
-                        <!--</button>-->
-                        <!--<button type="button" class="settings-tab" onclick="switchSettingsTab(event, 'system')">-->
-                        <!--    <i class="fas fa-sliders-h"></i> System Preferences-->
-                        <!--</button>-->
-                    </div>
-                    
-                    <!-- Company Profile Tab -->
-                    <div id="profile" class="settings-tab-content active">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-info-circle"></i> Basic Information</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Company Name *</label>
-                                    <input type="text" name="company_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['company_name'] ?? ''); ?>" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Registration Number</label>
-                                    <input type="text" name="company_registration_number" class="form-control" value="<?php echo htmlspecialchars($companySettings['company_registration_number'] ?? ''); ?>">
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($companySettings['email'] ?? ''); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>Website</label>
-                                    <input type="text" name="website" class="form-control" value="<?php echo htmlspecialchars($companySettings['website'] ?? ''); ?>" placeholder="https://www.example.com">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <h3><i class="fas fa-map-marker-alt"></i> Address</h3>
-                            <div class="form-group">
-                                <label>Address Line 1</label>
-                                <input type="text" name="address_line1" class="form-control" value="<?php echo htmlspecialchars($companySettings['address_line1'] ?? ''); ?>">
-                            </div>
-                            <div class="form-group">
-                                <label>Address Line 2</label>
-                                <input type="text" name="address_line2" class="form-control" value="<?php echo htmlspecialchars($companySettings['address_line2'] ?? ''); ?>">
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>City</label>
-                                    <input type="text" name="city" class="form-control" value="<?php echo htmlspecialchars($companySettings['city'] ?? ''); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>State</label>
-                                    <select name="state" class="form-control">
-                                        <option value="">Select State</option>
-                                        <?php 
-                                        $currentState = $companySettings['state'] ?? '';
-                                        foreach ($states as $state): 
-                                        ?>
-                                            <option value="<?php echo $state['state_name']; ?>" <?php echo ($currentState == $state['state_name']) ? 'selected' : ''; ?>>
-                                                <?php echo $state['state_name']; ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Postal Code</label>
-                                    <input type="text" name="postal_code" class="form-control" value="<?php echo htmlspecialchars($companySettings['postal_code'] ?? ''); ?>">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Country</label>
-                                    <input type="text" name="country" class="form-control" value="<?php echo htmlspecialchars($companySettings['country'] ?? 'India'); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>Phone</label>
-                                    <input type="text" name="phone" class="form-control" value="<?php echo htmlspecialchars($companySettings['phone'] ?? ''); ?>">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Business Settings Tab -->
-                    <div id="business" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-calendar-alt"></i> Financial Year & Currency</h3>
-                            <div class="info-box">
-                                <i class="fas fa-info-circle"></i>
-                                <strong>Financial Year:</strong> Select the month when your financial year starts (e.g., April for India)
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Financial Year Starts In</label>
-                                    <select name="financial_year_start" class="form-control">
-                                        <?php
-                                        $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                                        foreach ($months as $index => $month) {
-                                            $monthNum = $index + 1;
-                                            $selected = ($companySettings['financial_year_start'] ?? 4) == $monthNum ? 'selected' : '';
-                                            echo "<option value=\"$monthNum\" $selected>$month</option>";
-                                        }
-                                        ?>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Currency Code</label>
-                                    <input type="text" name="currency_code" class="form-control" value="<?php echo htmlspecialchars($companySettings['currency_code'] ?? 'INR'); ?>" placeholder="INR, USD, EUR">
-                                </div>
-                                <div class="form-group">
-                                    <label>Currency Symbol</label>
-                                    <input type="text" name="currency_symbol" class="form-control" value="<?php echo htmlspecialchars($companySettings['currency_symbol'] ?? '₹'); ?>" placeholder="₹, $, €">
-                                </div>
-                    
+            
+            <form method="POST" enctype="multipart/form-data" action="company">
+                <input type="hidden" name="action" value="update_company_settings">
+                <input type="hidden" name="company_id" value="<?php echo $companySettings['id'] ?? ''; ?>">
 
-                            </div>
+                <div class="settings-container">
+                    
+                    <?php if ($success): ?>
+                        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+                            <i class="fas fa-check-circle me-2"></i> <?php echo $success; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
-                        
-                        <div class="settings-section">
-                            <h3><i class="fas fa-globe"></i> Regional Settings</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Date Format</label>
-                                    <select name="date_format" class="form-control">
-                                        <option value="d-m-Y" <?php echo ($companySettings['date_format'] ?? 'd-m-Y') === 'd-m-Y' ? 'selected' : ''; ?>>DD-MM-YYYY (31-12-2024)</option>
-                                        <option value="m-d-Y" <?php echo ($companySettings['date_format'] ?? '') === 'm-d-Y' ? 'selected' : ''; ?>>MM-DD-YYYY (12-31-2024)</option>
-                                        <option value="Y-m-d" <?php echo ($companySettings['date_format'] ?? '') === 'Y-m-d' ? 'selected' : ''; ?>>YYYY-MM-DD (2024-12-31)</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Timezone</label>
-                                    <select name="timezone" class="form-control">
-                                        <option value="Asia/Kolkata" <?php echo ($companySettings['timezone'] ?? 'Asia/Kolkata') === 'Asia/Kolkata' ? 'selected' : ''; ?>>Asia/Kolkata (IST)</option>
-                                        <option value="America/New_York" <?php echo ($companySettings['timezone'] ?? '') === 'America/New_York' ? 'selected' : ''; ?>>America/New_York (EST)</option>
-                                        <option value="Europe/London" <?php echo ($companySettings['timezone'] ?? '') === 'Europe/London' ? 'selected' : ''; ?>>Europe/London (GMT)</option>
-                                        <option value="Asia/Dubai" <?php echo ($companySettings['timezone'] ?? '') === 'Asia/Dubai' ? 'selected' : ''; ?>>Asia/Dubai (GST)</option>
-                                        <option value="Asia/Singapore" <?php echo ($companySettings['timezone'] ?? '') === 'Asia/Singapore' ? 'selected' : ''; ?>>Asia/Singapore (SGT)</option>
-                                    </select>
-                                </div>
-                            </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($error): ?>
+                        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i> <?php echo $error; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Action Header (Top Right Buttons) -->
+                    <div class="page-header-actions">
+                        <div class="header-title">
+                            <h1>Business Settings</h1>
+                            <p>Edit Your Company Settings And Information</p>
+                        </div>
+                        <div class="action-buttons">
+                            <button type="button" class="btn-action-light">
+                                <i class="fas fa-headset me-2"></i> Chat Support
+                            </button>
+                            <a href="settings.php" class="btn-action-light">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn-action-primary">
+                                Save Changes
+                            </button>
                         </div>
                     </div>
-                    
-                    <!-- Branding Tab -->
-                    <div id="branding" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-paint-brush"></i> Look & Feel</h3>
-                            <div class="info-box">
-                                <i class="fas fa-info-circle"></i>
-                                Customize the appearance of your ERP instance.
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Application Name</label>
-                                    <input type="text" name="app_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['app_name'] ?? ''); ?>" placeholder="My Company ERP">
-                                    <small style="color: var(--text-secondary);">Overrides "Tiger ERP" in the header</small>
-                                </div>
-                                <div class="form-group">
-                                    <label>Theme Color</label>
-                                    <input type="color" name="theme_color" class="form-control" value="<?php echo htmlspecialchars($companySettings['theme_color'] ?? '#3b82f6'); ?>" style="height: 45px; padding: 5px;">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Company Logo</label>
+
+                    <!-- Main Content Card -->
+                    <div class="settings-card">
+                        
+                        <!-- Top Grid: Logo + Name + Type -->
+                        <div class="logo-section-grid">
+                            <!-- Col 1: Logo -->
+                            <div class="logo-upload-container">
                                 <?php if (!empty($companySettings['logo_path'])): ?>
-                                    <div style="margin-bottom: 10px;">
-                                        <img src="../../<?php echo htmlspecialchars($companySettings['logo_path']); ?>" alt="Current Logo" style="max-height: 60px; max-width: 200px; width: auto; height: auto; border: 1px solid #ddd; padding: 5px; border-radius: 4px;">
-                                    </div>
+                                    <img src="../../<?php echo htmlspecialchars($companySettings['logo_path']); ?>" alt="Logo" class="logo-preview-img">
+                                <?php else: ?>
+                                    <i class="fas fa-image"></i>
+                                    <span>Upload Logo</span>
+                                    <small>PNG/JPG, max 5MB</small>
                                 <?php endif; ?>
-                                <input type="file" name="company_logo" class="form-control" accept="image/*">
-                                <small style="color: var(--text-secondary);">Upload a PNG, JPG, WebP, or SVG file (Max 2MB). Recommended height: 40px.</small>
-                                <div style="margin-top: 10px;">
-                                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                        <input type="checkbox" name="process_logo" value="1">
-                                        <span style="font-size: 0.9rem;">Convert to White Logo (Transparent Background)</span>
+                                <input type="file" id="company_logo" name="company_logo" accept="image/*">
+                            </div>
+
+                            <!-- Col 2: Business Name (Spans rest of space handled in grid) -->
+                            <div style="grid-column: span 2;">
+                                <div class="mb-4">
+                                    <label class="form-label required">Business Name</label>
+                                    <input type="text" name="company_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['company_name'] ?? ''); ?>" placeholder="Enter Business Name" required>
+                                </div>
+                                <div class="grid-row-2 mb-0">
+                                    <div>
+                                        <label class="form-label">Industry Type</label>
+                                        <select class="form-select form-control" name="industry_type">
+                                            <option value="">Select Industry Type</option>
+                                            <?php
+                                            $industries = [
+                                                'Retail', 'Wholesale', 'Manufacturing', 'Services', 'IT & Software', 
+                                                'Healthcare', 'Education', 'Construction', 'Logistics', 'Agriculture', 'Other'
+                                            ];
+                                            foreach ($industries as $ind) {
+                                                $selected = ($companySettings['industry_type'] ?? '') === $ind ? 'selected' : '';
+                                                echo "<option value=\"$ind\" $selected>$ind</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                         <label class="form-label">Business Registration Type</label>
+                                        <select class="form-select form-control" name="business_type">
+                                            <option value="">Select Type</option>
+                                            <?php
+                                            $govTypes = ['Private Limited Company', 'Sole Proprietorship', 'Partnership Firm', 'LLP', 'Individual', 'Not Registered'];
+                                            foreach ($govTypes as $type) {
+                                                $selected = ($companySettings['business_type'] ?? '') === $type ? 'selected' : '';
+                                                echo "<option value=\"$type\" $selected>$type</option>";
+                                            }
+                                            ?>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Row -->
+                        <div class="grid-row-2">
+                            <div>
+                                <label class="form-label">Company Phone Number</label>
+                                <input type="text" name="phone" class="form-control" value="<?php echo htmlspecialchars($companySettings['phone'] ?? ''); ?>" placeholder="Enter Phone Number">
+                            </div>
+                            <div>
+                                <label class="form-label">Company E-Mail</label>
+                                <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($companySettings['email'] ?? ''); ?>" placeholder="Enter Company Email">
+                            </div>
+                        </div>
+
+                        <!-- Billing Address -->
+                        <div class="d-full-width">
+                            <label class="form-label">Company Address</label>
+                            <textarea name="address_line1" class="form-control" placeholder="Enter Company Address"><?php echo htmlspecialchars($companySettings['address_line1'] ?? ''); ?></textarea>
+                        </div>
+
+                        <!-- Location Row -->
+                        <div class="grid-row-2">
+                            <div>
+                                <label class="form-label">State</label>
+                                <select name="state" class="form-control">
+                                    <option value="">Select State</option>
+                                    <?php 
+                                    $currentState = $companySettings['state'] ?? '';
+                                    foreach ($states as $state): 
+                                    ?>
+                                        <option value="<?php echo $state['state_name']; ?>" <?php echo ($currentState == $state['state_name']) ? 'selected' : ''; ?>>
+                                            <?php echo $state['state_name']; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Pincode</label>
+                                <input type="text" name="postal_code" class="form-control" value="<?php echo htmlspecialchars($companySettings['postal_code'] ?? ''); ?>" placeholder="Enter Pincode">
+                            </div>
+                        </div>
+
+                        <!-- City -->
+                        <div class="d-full-width">
+                            <label class="form-label">City</label>
+                            <input type="text" name="city" class="form-control" value="<?php echo htmlspecialchars($companySettings['city'] ?? ''); ?>" placeholder="Enter City">
+                        </div>
+                        
+                        <!-- GST & Registration -->
+                        <div class="grid-row-2 align-items-end" style="grid-template-columns: 1fr 1fr 1fr;">
+                           <div>
+                                <label class="form-label mb-3">Are you GST Registered?</label>
+                                <div class="radio-group form-control border-0 p-0" style="height: auto;">
+                                    <label class="radio-option">
+                                        <input type="radio" name="is_gst_registered" value="1" <?php echo ($companySettings['is_gst_registered'] ?? 0) ? 'checked' : ''; ?> onchange="toggleGstField(true)">
+                                        Yes
                                     </label>
-                                    <small style="color: var(--text-secondary); display: block; margin-top: 2px;">Removes white background and makes the logo white (useful for dark themes).</small>
+                                    <label class="radio-option">
+                                        <input type="radio" name="is_gst_registered" value="0" <?php echo !($companySettings['is_gst_registered'] ?? 0) ? 'checked' : ''; ?> onchange="toggleGstField(false)">
+                                        No
+                                    </label>
+                                </div>
+                             </div>
+                             
+                             <div id="gst-container" style="display: <?php echo ($companySettings['is_gst_registered'] ?? 0) ? 'block' : 'none'; ?>;">
+                                <label class="form-label">GSTIN</label>
+                                <input type="text" name="gstin" id="gstin" class="form-control" value="<?php echo htmlspecialchars($companySettings['gstin'] ?? ''); ?>" placeholder="Enter GSTIN" maxlength="15" onblur="extractPanFromGst(this.value)">
+                             </div>
+
+                             <div id="pan-container">
+                                <label class="form-label required">PAN Number</label>
+                                <input type="text" name="pan" id="pan" class="form-control" value="<?php echo htmlspecialchars($companySettings['pan'] ?? ''); ?>" placeholder="Enter PAN Number" maxlength="10" required>
+                             </div>
+                        </div>
+                        
+                        <!-- E-Invoicing Toggle Frame -->
+                        <div class="d-full-width mt-3">
+                            <div class="toggle-wrapper justify-content-between">
+                                <span class="text-primary font-weight-bold">Enable e-Invoicing</span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="enable_einvoicing" value="1" <?php echo ($companySettings['enable_einvoicing'] ?? 0) ? 'checked' : ''; ?> style="width: 40px; height: 20px;">
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Tax & Banking Tab -->
-                    <div id="tax" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-file-invoice-dollar"></i> Tax Information</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>GSTIN</label>
-                                    <input type="text" name="gstin" class="form-control" value="<?php echo htmlspecialchars($companySettings['gstin'] ?? ''); ?>" placeholder="07XXXXX1234X1ZX">
-                                </div>
-                                <div class="form-group">
-                                    <label>PAN</label>
-                                    <input type="text" name="pan" class="form-control" value="<?php echo htmlspecialchars($companySettings['pan'] ?? ''); ?>" placeholder="XXXXX1234X">
-                                </div>
-                                <div class="form-group">
-                                    <label>Tax Registration Date</label>
-                                    <input type="date" name="tax_registration_date" class="form-control" value="<?php echo $companySettings['tax_registration_date'] ?? ''; ?>">
-                                </div>
+
+                        <div class="section-separator"></div>
+                        
+                        <div class="section-title">Bank Details</div>
+                         <div class="grid-row-2">
+                            <div>
+                                <label class="form-label">Bank Name</label>
+                                <input type="text" name="bank_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_name'] ?? ''); ?>">
+                            </div>
+                            <div>
+                                <label class="form-label">Account Number</label>
+                                <input type="text" name="bank_account_number" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_account_number'] ?? ''); ?>">
+                            </div>
+                            <div>
+                                <label class="form-label">IFSC Code</label>
+                                <input type="text" name="bank_ifsc" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_ifsc'] ?? ''); ?>">
+                            </div>
+                             <div>
+                                <label class="form-label">Branch Name</label>
+                                <input type="text" name="bank_branch" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_branch'] ?? ''); ?>">
                             </div>
                         </div>
                         
-                        <div class="settings-section">
-                            <h3><i class="fas fa-university"></i> Bank Details</h3>
-                            <div class="info-box">
-                                <i class="fas fa-info-circle"></i>
-                                These details will appear on invoices and quotations
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Bank Name</label>
-                                    <input type="text" name="bank_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_name'] ?? ''); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>Account Number</label>
-                                    <input type="text" name="bank_account_number" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_account_number'] ?? ''); ?>">
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>IFSC Code</label>
-                                    <input type="text" name="bank_ifsc" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_ifsc'] ?? ''); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>Branch</label>
-                                    <input type="text" name="bank_branch" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_branch'] ?? ''); ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>Account Holder Name</label>
-                                    <input type="text" name="bank_account_holder" class="form-control" value="<?php echo htmlspecialchars($companySettings['bank_account_holder'] ?? ''); ?>">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Invoice Settings Tab -->
-                    <div id="invoice" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-hashtag"></i> Document Prefixes</h3>
-                            <div class="form-group" style="margin-bottom: 20px;">
-                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                    <input type="checkbox" name="print_logo_on_invoice" value="1" <?php echo ($companySettings['print_logo_on_invoice'] ?? 1) ? 'checked' : ''; ?>>
-                                    <span>Print Logo on Invoice</span>
-                                </label>
-                                <small style="color: var(--text-secondary); margin-left: 25px;">If checked, the company logo will be printed on invoices.</small>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Invoice Prefix</label>
-                                    <input type="text" name="invoice_prefix" class="form-control" value="<?php echo htmlspecialchars($companySettings['invoice_prefix'] ?? 'INV'); ?>" placeholder="INV">
-                                    <small style="color: var(--text-secondary);">Example: INV-2024-001</small>
-                                </div>
-                                <div class="form-group">
-                                    <label>Quotation Prefix</label>
-                                    <input type="text" name="quotation_prefix" class="form-control" value="<?php echo htmlspecialchars($companySettings['quotation_prefix'] ?? 'QT'); ?>" placeholder="QT">
-                                    <small style="color: var(--text-secondary);">Example: QT-2024-001</small>
-                                </div>
-                                <div class="form-group">
-                                    <label>Default Payment Terms (Days)</label>
-                                    <input type="number" name="invoice_due_days" class="form-control" value="<?php echo $companySettings['invoice_due_days'] ?? 30; ?>" min="0">
-                                    <small style="color: var(--text-secondary);">Default due date offset</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <h3><i class="fas fa-file-alt"></i> Terms & Conditions</h3>
-                            <div class="form-group">
-                                <label>Invoice Terms & Conditions</label>
-                                <textarea name="terms_conditions" class="form-control" rows="5" placeholder="Enter each term on a new line"><?php echo htmlspecialchars($companySettings['terms_conditions'] ?? ''); ?></textarea>
-                                <small style="color: var(--text-secondary);">These will appear at the bottom of invoices</small>
-                            </div>
-                            <div class="form-group">
-                                <label>Invoice Footer Text</label>
-                                <textarea name="invoice_footer" class="form-control" rows="2" placeholder="Thank you for your business!"><?php echo htmlspecialchars($companySettings['invoice_footer'] ?? ''); ?></textarea>
-                                <small style="color: var(--text-secondary);">Optional footer message</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Email Configuration Tab -->
-                    <div id="email" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-server"></i> SMTP Configuration</h3>
-                            <div class="info-box">
-                                <i class="fas fa-info-circle"></i>
-                                Configure SMTP settings to send emails from the system (invoices, notifications, etc.)
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>SMTP Host</label>
-                                    <input type="text" name="smtp_host" class="form-control" value="<?php echo htmlspecialchars($companySettings['smtp_host'] ?? ''); ?>" placeholder="smtp.gmail.com">
-                                </div>
-                                <div class="form-group">
-                                    <label>SMTP Port</label>
-                                    <input type="number" name="smtp_port" class="form-control" value="<?php echo $companySettings['smtp_port'] ?? 587; ?>">
-                                </div>
-                                <div class="form-group">
-                                    <label>Encryption</label>
-                                    <select name="smtp_encryption" class="form-control">
-                                        <option value="tls" <?php echo ($companySettings['smtp_encryption'] ?? 'tls') === 'tls' ? 'selected' : ''; ?>>TLS</option>
-                                        <option value="ssl" <?php echo ($companySettings['smtp_encryption'] ?? '') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
+                        <!-- Extra Business Details (Website, etc) -->
+                        <div class="card bg-light border p-3 mt-4">
+                            <h6 class="mb-3">Add Business Details</h6>
+                            <p class="small text-muted mb-3">Add additional business information such as Website, PAN number, etc.</p>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <select class="form-select form-control">
+                                        <option>Website</option>
                                     </select>
                                 </div>
+                                <div class="col-md-7">
+                                    <input type="text" name="website" class="form-control" value="<?php echo htmlspecialchars($companySettings['website'] ?? ''); ?>" placeholder="www.website.com">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-primary w-100" style="background-color: #7c3aed; border:none;">Add</button>
+                                </div>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>SMTP Username</label>
-                                    <input type="text" name="smtp_username" class="form-control" value="<?php echo htmlspecialchars($companySettings['smtp_username'] ?? ''); ?>">
+                        </div>
+
+                    </div>
+                    <!-- End Main Card -->
+
+                    <!-- Additional Settings Cards (Preserving Functionality) -->
+                    <div class="settings-card mt-4">
+                        <div class="section-title">Invoice & Fiscal Settings</div>
+                        <div class="grid-row-2">
+                            <div>
+                                <label class="form-label">Fiscal Year Start Month</label>
+                                <select name="financial_year_start" class="form-control">
+                                    <?php
+                                    $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                                    foreach ($months as $index => $month) {
+                                        $monthNum = $index + 1;
+                                        $selected = ($companySettings['financial_year_start'] ?? 4) == $monthNum ? 'selected' : '';
+                                        echo "<option value=\"$monthNum\" $selected>$month</option>";
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Currency</label>
+                                <div class="input-group">
+                                    <input type="text" name="currency_code" class="form-control" value="<?php echo htmlspecialchars($companySettings['currency_code'] ?? 'INR'); ?>" placeholder="Code (INR)">
+                                    <input type="text" name="currency_symbol" class="form-control" value="<?php echo htmlspecialchars($companySettings['currency_symbol'] ?? '₹'); ?>" placeholder="Symbol (₹)">
                                 </div>
-                                <div class="form-group">
-                                    <label>SMTP Password</label>
-                                    <input type="password" name="smtp_password" class="form-control" placeholder="Leave blank to keep current">
-                                    <small style="color: var(--text-secondary);">Password is encrypted</small>
+                            </div>
+                        </div>
+                        <div class="grid-row-2">
+                            <div>
+                                <label class="form-label">Invoice Prefix</label>
+                                <input type="text" name="invoice_prefix" class="form-control" value="<?php echo htmlspecialchars($companySettings['invoice_prefix'] ?? 'INV'); ?>">
+                            </div>
+                            <div>
+                                <label class="form-label">Quotation Prefix</label>
+                                <input type="text" name="quotation_prefix" class="form-control" value="<?php echo htmlspecialchars($companySettings['quotation_prefix'] ?? 'QT'); ?>">
+                            </div>
+                        </div>
+                        <div class="grid-row-2">
+                             <div>
+                                <label class="form-label">Access Barcode Scanner?</label>
+                                 <div class="radio-group mt-2">
+                                    <label class="radio-option">
+                                        <input type="radio" name="enable_barcode" value="1" <?php echo ($companySettings['enable_barcode'] ?? 1) ? 'checked' : ''; ?>> Yes
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="enable_barcode" value="0" <?php echo !($companySettings['enable_barcode'] ?? 1) ? 'checked' : ''; ?>> No
+                                    </label>
                                 </div>
+                            </div>
+                             <div>
+                                <label class="form-label">Low Stock Alert Quantity</label>
+                                <input type="number" name="low_stock_threshold" class="form-control" value="<?php echo $companySettings['low_stock_threshold'] ?? 10; ?>">
                             </div>
                         </div>
                         
-                        <div class="settings-section">
-                            <h3><i class="fas fa-envelope-open-text"></i> Email Settings</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>From Name</label>
-                                    <input type="text" name="email_from_name" class="form-control" value="<?php echo htmlspecialchars($companySettings['email_from_name'] ?? ''); ?>" placeholder="Your Company Name">
-                                </div>
-                                <div class="form-group">
-                                    <label>From Email Address</label>
-                                    <input type="email" name="email_from_address" class="form-control" value="<?php echo htmlspecialchars($companySettings['email_from_address'] ?? ''); ?>" placeholder="noreply@yourcompany.com">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" name="enable_email_notifications" value="1" <?php echo ($companySettings['enable_email_notifications'] ?? 1) ? 'checked' : ''; ?>>
-                                    <span>Enable Email Notifications</span>
-                                </label>
-                                <small style="color: var(--text-secondary); margin-left: 30px;">Send automated emails for invoices, payments, etc.</small>
-                            </div>
+                         <div class="mt-3">
+                            <label class="form-label">Invoice Terms & Conditions</label>
+                            <textarea name="terms_conditions" class="form-control" rows="3"><?php echo htmlspecialchars($companySettings['terms_conditions'] ?? ''); ?></textarea>
                         </div>
                     </div>
-                    
-                    <!-- Social Media Tab -->
-                    <div id="social" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-share-alt"></i> Social Media Links</h3>
-                            <div class="info-box">
-                                <i class="fas fa-info-circle"></i>
-                                Add your social media profiles (optional)
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fab fa-linkedin" style="color: #0077b5;"></i> LinkedIn URL</label>
-                                <input type="url" name="linkedin_url" class="form-control" value="<?php echo htmlspecialchars($companySettings['linkedin_url'] ?? ''); ?>" placeholder="https://linkedin.com/company/yourcompany">
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fab fa-facebook" style="color: #1877f2;"></i> Facebook URL</label>
-                                <input type="url" name="facebook_url" class="form-control" value="<?php echo htmlspecialchars($companySettings['facebook_url'] ?? ''); ?>" placeholder="https://facebook.com/yourcompany">
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fab fa-twitter" style="color: #1da1f2;"></i> Twitter URL</label>
-                                <input type="url" name="twitter_url" class="form-control" value="<?php echo htmlspecialchars($companySettings['twitter_url'] ?? ''); ?>" placeholder="https://twitter.com/yourcompany">
-                            </div>
-                            <div class="form-group">
-                                <label><i class="fab fa-instagram" style="color: #e4405f;"></i> Instagram URL</label>
-                                <input type="url" name="instagram_url" class="form-control" value="<?php echo htmlspecialchars($companySettings['instagram_url'] ?? ''); ?>" placeholder="https://instagram.com/yourcompany">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- System Preferences Tab -->
-                    <div id="system" class="settings-tab-content">
-                        <div class="settings-section">
-                            <h3><i class="fas fa-cogs"></i> System Preferences</h3>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Low Stock Threshold</label>
-                                    <input type="number" name="low_stock_threshold" class="form-control" value="<?php echo $companySettings['low_stock_threshold'] ?? 10; ?>" min="0">
-                                    <small style="color: var(--text-secondary);">Alert when stock falls below this quantity</small>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" name="enable_multi_currency" value="1" <?php echo ($companySettings['enable_multi_currency'] ?? 0) ? 'checked' : ''; ?>>
-                                    <span>Enable Multi-Currency Support</span>
-                                </label>
-                                <small style="color: var(--text-secondary); margin-left: 30px;">Allow transactions in multiple currencies</small>
-                            </div>
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" name="enable_barcode" value="1" <?php echo ($companySettings['enable_barcode'] ?? 1) ? 'checked' : ''; ?>>
-                                    <span>Enable Barcode/QR Code Generation</span>
-                                </label>
-                                <small style="color: var(--text-secondary); margin-left: 30px;">Generate barcodes for products and documents</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                
-                    <div style="position: sticky; bottom: 0; background: white; padding: 20px; border-top: 2px solid var(--border-color); margin: 20px -20px -20px; display: flex; justify-content: flex-end; gap: 10px;">
-                        <a href="settings.php" class="btn" style="background: var(--border-color);">
-                            <i class="fas fa-times"></i> Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Save All Settings
-                        </button>
-                    </div>
-                </form>
-            </div>
+
+                    <!-- Hidden Fields for missing data to prevent errors if not set consistently -->
+                    <input type="hidden" name="date_format" value="<?php echo $companySettings['date_format'] ?? 'd-m-Y'; ?>">
+                    <input type="hidden" name="timezone" value="<?php echo $companySettings['timezone'] ?? 'Asia/Kolkata'; ?>">
+                    <input type="hidden" name="invoice_due_days" value="<?php echo $companySettings['invoice_due_days'] ?? 30; ?>">
+
+                </div>
+            </form>
         </main>
     </div>
+
+    <!-- Scripts loaded via sidebar.php -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoInput = document.getElementById('company_logo');
+            const logoContainer = document.querySelector('.logo-upload-container');
+
+            if (logoInput && logoContainer) {
+                logoInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            // Keep the input input but replace visual content
+                            const existingInput = logoContainer.querySelector('input[type="file"]');
+                            logoContainer.innerHTML = '';
+                            logoContainer.appendChild(existingInput); // Re-append input to keep it functional
+                            
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'logo-preview-img';
+                            logoContainer.appendChild(img);
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        });
+
+        function toggleGstField(isRegistered) {
+            const gstContainer = document.getElementById('gst-container');
+            
+            if (isRegistered) {
+                gstContainer.style.display = 'block';
+            } else {
+                gstContainer.style.display = 'none';
+                document.getElementById('gstin').value = ''; 
+            }
+        }
+
+        function extractPanFromGst(gstin) {
+            const panInput = document.getElementById('pan');
+            // GSTIN format: 22AAAAA0000A1Z5 -> chars 3-12 (index 2-11) is PAN
+            if (gstin.length >= 12) {
+                const extractedPan = gstin.substring(2, 12).toUpperCase();
+                // Simple regex check for PAN format (5 letters, 4 numbers, 1 letter)
+                const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+                if (panRegex.test(extractedPan)) {
+                    panInput.value = extractedPan;
+                }
+            }
+        }
+    </script>
 </body>
 </html>

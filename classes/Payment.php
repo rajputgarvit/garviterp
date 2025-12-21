@@ -1,57 +1,78 @@
 <?php
 require_once 'Database.php';
+require_once 'PaytmChecksum.php';
 
 class Payment {
     private $db;
-    private $razorpayKeyId;
-    private $razorpayKeySecret;
+    private $paytmMerchantId;
+    private $paytmMerchantKey;
+    private $paytmWebsite;
+    private $paytmIndustryType;
+    private $paytmChannelId;
 
     public function __construct() {
         $this->db = Database::getInstance();
         
-        // Load Razorpay keys from environment or config
-        // For now, using test keys (should be moved to config)
-        $this->razorpayKeyId = 'rzp_test_YOUR_KEY_ID';
-        $this->razorpayKeySecret = 'YOUR_KEY_SECRET';
+        // Paytm Credentials (TEST)
+        $this->paytmMerchantId = 'EBhZEy48586547679294';
+        $this->paytmMerchantKey = 'y8JVmIw9WeSQT7Ma';
+        $this->paytmWebsite = 'WEBSTAGING';
+        $this->paytmIndustryType = 'Retail';
+        $this->paytmChannelId = 'WEB';
     }
 
     /**
-     * Create Razorpay order
+     * Get Paytm Configuration
      */
-    public function createRazorpayOrder($amount, $currency = 'INR', $receipt = null) {
-        $url = 'https://api.razorpay.com/v1/orders';
+    public function getPaytmConfig() {
+        return [
+            'MID' => $this->paytmMerchantId,
+            'WEBSITE' => $this->paytmWebsite,
+            'INDUSTRY_TYPE_ID' => $this->paytmIndustryType,
+            'CHANNEL_ID' => $this->paytmChannelId,
+            'CALLBACK_URL' => MODULES_URL . '/subscription/checkout.php'
+        ];
+    }
+
+    /**
+     * Generate Paytm Signature (Checksum)
+     */
+    public function generatePaytmSignature($params) {
+        return PaytmChecksum::generateSignature($params, $this->paytmMerchantKey);
+    }
+
+    /**
+     * Verify Paytm Signature
+     */
+    public function verifyPaytmSignature($params, $checksum) {
+        return PaytmChecksum::verifySignature($params, $this->paytmMerchantKey, $checksum);
+    }
+
+    /**
+     * Prepare Paytm Parameters for Checkout
+     */
+    public function getPaytmParams($orderId, $amount, $custId, $email = '', $mobile = '') {
+        $config = $this->getPaytmConfig();
         
-        $data = [
-            'amount' => $amount * 100, // Amount in paise
-            'currency' => $currency,
-            'receipt' => $receipt ?? 'order_' . time(),
-            'payment_capture' => 1
+        $params = [
+            "MID" => $config['MID'],
+            "WEBSITE" => $config['WEBSITE'],
+            "INDUSTRY_TYPE_ID" => $config['INDUSTRY_TYPE_ID'],
+            "CHANNEL_ID" => $config['CHANNEL_ID'],
+            "ORDER_ID" => $orderId,
+            "CUST_ID" => $custId,
+            "TXN_AMOUNT" => number_format((float)$amount, 2, '.', ''), // Amount must be string format 0.00
+            "CALLBACK_URL" => $config['CALLBACK_URL'],
         ];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_USERPWD, $this->razorpayKeyId . ':' . $this->razorpayKeySecret);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200) {
-            throw new Exception("Failed to create Razorpay order");
+        if (!empty($email)) {
+            $params["EMAIL"] = $email;
+        }
+        if (!empty($mobile)) {
+            $params["MOBILE_NO"] = $mobile;
         }
 
-        return json_decode($response, true);
-    }
-
-    /**
-     * Verify Razorpay payment signature
-     */
-    public function verifyPaymentSignature($orderId, $paymentId, $signature) {
-        $expectedSignature = hash_hmac('sha256', $orderId . '|' . $paymentId, $this->razorpayKeySecret);
-        return hash_equals($expectedSignature, $signature);
+        return $params;
     }
 
     /**
@@ -60,12 +81,12 @@ class Payment {
     public function recordTransaction($subscriptionId, $paymentData) {
         return $this->db->insert('payment_transactions', [
             'subscription_id' => $subscriptionId,
-            'razorpay_payment_id' => $paymentData['payment_id'] ?? null,
-            'razorpay_order_id' => $paymentData['order_id'] ?? null,
+            'razorpay_payment_id' => $paymentData['txn_id'] ?? null, // Use txn_id as payment_id ref
+            'razorpay_order_id' => $paymentData['order_id'] ?? null, // Use order_id ref
             'amount' => $paymentData['amount'],
             'currency' => $paymentData['currency'] ?? 'INR',
             'status' => $paymentData['status'] ?? 'pending',
-            'payment_method' => $paymentData['method'] ?? null,
+            'payment_method' => $paymentData['method'] ?? 'Paytm',
             'transaction_date' => date('Y-m-d H:i:s')
         ]);
     }
@@ -91,34 +112,6 @@ class Payment {
             'id = ?',
             [$transactionId]
         );
-    }
-
-    /**
-     * Get Razorpay key for frontend
-     */
-    public function getRazorpayKey() {
-        return $this->razorpayKeyId;
-    }
-
-    /**
-     * Fetch payment details from Razorpay
-     */
-    public function fetchPaymentDetails($paymentId) {
-        $url = "https://api.razorpay.com/v1/payments/{$paymentId}";
-        
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_USERPWD, $this->razorpayKeyId . ':' . $this->razorpayKeySecret);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200) {
-            throw new Exception("Failed to fetch payment details");
-        }
-
-        return json_decode($response, true);
     }
 
     /**
@@ -148,3 +141,4 @@ class Payment {
         );
     }
 }
+
