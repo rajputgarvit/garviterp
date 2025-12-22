@@ -276,5 +276,7 @@ require_once '../../config/config.php';
             });
         });
     </script>
+        <script src="../../public/assets/js/landing.js"></script>
+
 </body>
 </html>

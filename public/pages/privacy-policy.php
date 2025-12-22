@@ -210,6 +210,7 @@ require_once '../../config/config.php';
             </div>
         </div>
     </section>
+    <script src="../../public/assets/js/landing.js"></script>
 
     <?php require_once '../../includes/public_footer.php'; ?>
 </body>

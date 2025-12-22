@@ -145,6 +145,14 @@ body {
     box-shadow: var(--shadow-md);
 }
 
+/* Mobile Menu Toggle */
+.mobile-menu-toggle {
+    display: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
 /* ===========================
    Hero Section
    =========================== */
@@ -1328,12 +1336,7 @@ body {
    =========================== */
 
 /* Mobile Menu Toggle (Default Hidden) */
-.mobile-menu-toggle {
-    display: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text-primary);
-}
+/* Mobile Menu Toggle (Moved to Navigation section) */
 
 @media (max-width: 968px) {
 

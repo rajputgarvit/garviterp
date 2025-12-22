@@ -221,6 +221,7 @@ require_once '../../config/config.php';
             <a href="../../modules/auth/register.php" class="btn btn-primary" style="padding: 18px 40px; font-size: 1.1rem; border-radius: 50px;">Start Secure Trial</a>
         </div>
     </section>
+    <script src="../../public/assets/js/landing.js"></script>
 
     <?php require_once '../../includes/public_footer.php'; ?>
 </body>
