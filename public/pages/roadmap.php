@@ -228,6 +228,7 @@ require_once '../../config/config.php';
         
         <div style="height: 100px;"></div>
     </div>
+    <script src="../../public/assets/js/landing.js"></script>
 
     <?php require_once '../../includes/public_footer.php'; ?>
 </body>

@@ -253,5 +253,7 @@ if ($planDetails) {
             guestForm.addEventListener('submit', (e) => handleFormSubmit(e, '../../modules/subscriptions/request_guest.php'));
         }
     </script>
+        <script src="../../public/assets/js/landing.js"></script>
+
 </body>
 </html>

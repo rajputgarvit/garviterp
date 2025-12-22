@@ -295,12 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="info-box">
                 <div class="info-icon"><i class="fas fa-phone"></i></div>
                 <h3 style="font-weight: 700; margin-bottom: 8px;">Call Us</h3>
-                <p style="color: var(--text-secondary);">+1 (555) 123-4567</p>
-            </div>
-            <div class="info-box">
-                <div class="info-icon"><i class="fas fa-map-marker-alt"></i></div>
-                <h3 style="font-weight: 700; margin-bottom: 8px;">Visit Us</h3>
-                <p style="color: var(--text-secondary);">123 Business Ave, Tech City</p>
+                <p style="color: var(--text-secondary);">+91 9520447284</p>
             </div>
         </div>
 

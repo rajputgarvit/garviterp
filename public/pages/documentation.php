@@ -261,5 +261,7 @@ require_once '../../config/config.php';
     </section>
 
     <?php require_once '../../includes/public_footer.php'; ?>
+        <script src="../../public/assets/js/landing.js"></script>
+
 </body>
 </html>
