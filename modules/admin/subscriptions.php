@@ -2,7 +2,8 @@
 $pageTitle = 'Subscription Management';
 $currentPage = 'subscriptions';
 require_once '../../config/config.php';
-require_once '../../includes/admin_layout.php';
+// Include Admin Header
+require_once '../../includes/admin_header.php';
 require_once '../../classes/Subscription.php';
 
 $db = Database::getInstance();
@@ -584,8 +585,14 @@ function updateMatrix(planId, featureCode, value) {
 </script>
 
 </div> <!-- End content-area -->
-</main>
+
+</main> <!-- End main-content -->
+
 </div> <!-- End dashboard-wrapper -->
+
+<?php require_once '../../includes/admin_footer.php'; ?>
+
 </body>
+</html>
 </html>
 

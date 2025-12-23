@@ -72,10 +72,8 @@ try {
         header('Location: ../auth/onboarding.php');
     } else {
         // Existing user upgrade
-        header('Location: ../dashboard/index.php?success=Plan upgraded successfully.');
+        header('Location: ../dashboard/index.php?success=Welcome! Your 14-day free trial has started.');
     }
-    // Ideally to a "Welcome" or "Success" page, then dashboard
-    header('Location: ../dashboard/index.php?success=Welcome! Your 14-day free trial has started.');
     exit;
 
 } catch (Exception $e) {
