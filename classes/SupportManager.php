@@ -14,13 +14,14 @@ class SupportManager {
     /**
      * Create a new ticket
      */
-    public function createTicket($userId, $categoryId, $subject, $message, $priority = 'Medium') {
+    public function createTicket($userId, $companyId, $categoryId, $subject, $message, $priority = 'Medium') {
         // Generate Ticket Number
         $ticketNumber = 'TKT-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(3)));
         
         // Insert Ticket
         $ticketId = $this->db->insert('support_tickets', [
             'ticket_number' => $ticketNumber,
+            'company_id' => $companyId,
             'user_id' => $userId,
             'category_id' => $categoryId,
             'subject' => $subject,
@@ -79,7 +80,7 @@ class SupportManager {
     /**
      * Get user's tickets or all tickets (for admin)
      */
-    public function getTickets($userId = null, $status = null) {
+    public function getTickets($userId = null, $status = null, $companyId = null) {
         $sql = "SELECT t.*, c.name as category_name, u.username as creator_name 
                 FROM support_tickets t 
                 JOIN support_categories c ON t.category_id = c.id 
@@ -91,6 +92,11 @@ class SupportManager {
         if ($userId) {
             $conditions[] = "t.user_id = ?";
             $params[] = $userId;
+        }
+
+        if ($companyId) {
+            $conditions[] = "t.company_id = ?";
+            $params[] = $companyId;
         }
 
         if ($status) {
