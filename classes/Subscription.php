@@ -63,6 +63,23 @@ class Subscription {
     }
 
     /**
+     * Check if a company has ever used a trial subscription
+     * @param int|null $companyId
+     * @return bool
+     */
+    public function hasUsedTrial($companyId = null) {
+        $cid = $companyId ?? $this->companyId;
+        if (!$cid) return false;
+
+        $trial = $this->db->fetchOne(
+            "SELECT id FROM subscriptions WHERE company_id = ? AND (status = 'trial' OR trial_ends_at IS NOT NULL)", 
+            [$cid]
+        );
+        
+        return (bool)$trial;
+    }
+
+    /**
      * Load all features and limits for the company into memory
      */
     private function loadFeatures() {
@@ -147,6 +164,75 @@ class Subscription {
         if ($sub) {
             $this->db->query("CALL sp_increment_usage(?, ?, ?)", [$sub['id'], $featureCode, $amount]);
         }
+    }
+
+    /**
+     * Create a new subscription for a company
+     * @param int $companyId
+     * @param string $planName
+     * @param string $billingCycle 'monthly' or 'annual'
+     * @param string $status 'trial', 'active', 'cancelled', 'expired'
+     * @param int|null $userId The user who created this subscription
+     * @return int The ID of the new subscription
+     */
+    public function createSubscription($companyId, $planName, $billingCycle, $status = 'active', $userId = null) {
+        // 1. Get Plan Details
+        $plan = $this->db->fetchOne("SELECT * FROM subscription_plans WHERE plan_name = ?", [$planName]);
+        if (!$plan) {
+            throw new Exception("Subscription plan '$planName' not found.");
+        }
+
+        $price = ($billingCycle === 'annual') ? $plan['annual_price'] : $plan['monthly_price'];
+        
+        // 2. Determine Period
+        $start = date('Y-m-d H:i:s');
+        $end = null;
+        $trialEnd = null;
+
+        if ($status === 'trial') {
+            $trialEnd = date('Y-m-d H:i:s', strtotime('+14 days'));
+            $end = $trialEnd; // Trial period ends
+        } else {
+            $period = ($billingCycle === 'annual') ? '+1 year' : '+1 month';
+            $end = date('Y-m-d H:i:s', strtotime($period));
+        }
+
+        // 3. Cancel any existing active/trial subscriptions
+        $this->db->update(
+            "subscriptions", 
+            ['status' => 'cancelled', 'cancelled_at' => date('Y-m-d H:i:s')], 
+            "company_id = ? AND status IN ('active', 'trial')", 
+            [$companyId]
+        );
+
+        // 4. If no userId provided, find the owner
+        if (!$userId) {
+            $owner = $this->db->fetchOne("SELECT id FROM users WHERE company_id = ? ORDER BY created_at ASC LIMIT 1", [$companyId]);
+            $userId = $owner ? $owner['id'] : null;
+        }
+
+        // 5. Create new Subscription
+        $subscriptionData = [
+            'user_id' => $userId,
+            'company_id' => $companyId,
+            'plan_name' => $planName,
+            'plan_price' => $price,
+            'billing_cycle' => $billingCycle,
+            'status' => $status,
+            'trial_ends_at' => $trialEnd,
+            'current_period_start' => $start,
+            'current_period_end' => $end,
+            'created_at' => $start
+        ];
+        
+        $subId = $this->db->insert("subscriptions", $subscriptionData);
+        
+        // 6. Reset internal cache if for same company
+        if ($this->companyId == $companyId) {
+            $this->features = null;
+        }
+
+        return $subId;
     }
 
     /**
