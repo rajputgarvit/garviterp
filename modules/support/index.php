@@ -9,15 +9,23 @@ $user = $auth->getCurrentUser();
 
 $supportManager = new SupportManager();
 
-// Determine if user can see all tickets (e.g., Admin) or just their own
-// For now, let's say only 'Super Admin' and 'Admin' see all. 
-// Everyone else sees theirs.
-$canManageTickets = $auth->hasRole('Super Admin') || $auth->hasRole('Admin');
+// Determine if user can see all tickets (Super Admin only) or just their company's
+$isSuperAdmin = $auth->hasRole('Super Admin');
+$isCompanyAdmin = $auth->hasRole('Admin');
+$canManageTickets = $isSuperAdmin || $isCompanyAdmin;
 
 $statusFilter = $_GET['status'] ?? null;
-$userId = $canManageTickets ? null : $user['id'];
+$userId = null;
+$companyId = null;
 
-$tickets = $supportManager->getTickets($userId, $statusFilter);
+if (!$isSuperAdmin) {
+    $companyId = $user['company_id'];
+    if (!$isCompanyAdmin) {
+        $userId = $user['id'];
+    }
+}
+
+$tickets = $supportManager->getTickets($userId, $statusFilter, $companyId);
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Create Ticket
         try {
-            $ticketId = $supportManager->createTicket($user['id'], $categoryId, $subject, $message, $priority);
+            $ticketId = $supportManager->createTicket($user['id'], $user['company_id'], $categoryId, $subject, $message, $priority);
             if ($ticketId) {
                 header("Location: index.php?msg=created"); // Simple redirect for now
                 exit;

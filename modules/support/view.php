@@ -18,8 +18,19 @@ if (!$ticket) {
     die("Ticket not found.");
 }
 
-$canManage = $auth->hasRole('Super Admin') || $auth->hasRole('Admin');
-if ($ticket['user_id'] != $user['id'] && !$canManage) {
+$isSuperAdmin = $auth->hasRole('Super Admin');
+$isCompanyAdmin = $auth->hasRole('Admin');
+
+$accessDenied = true;
+if ($isSuperAdmin) {
+    $accessDenied = false;
+} elseif ($ticket['company_id'] == $user['company_id']) {
+    if ($isCompanyAdmin || $ticket['user_id'] == $user['id']) {
+        $accessDenied = false;
+    }
+}
+
+if ($accessDenied) {
     die("Access Denied.");
 }
 
